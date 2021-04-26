@@ -1,0 +1,270 @@
+# This blueprint requires the use of two external scripts that must be setup with your configuration. They are available from https://github.com/brianhanifin/Home-Assistant-Config
+#
+# https://github.com/brianhanifin/Home-Assistant-Config/blob/master/scripts/notifications/inovelli_led/inovelli_led.yaml
+# https://github.com/brianhanifin/Home-Assistant-Config/blob/master/scripts/notifications/inovelli_led/inovelli_led_set_defaults.yaml
+#
+# The "jist" of this blueprint is that it will monitor the status of two items (a lock and a cover) and give you a 4x matrix of color options
+# So you can have your inovelli swtich (at a glance) tell you whats up
+#
+#
+#
+
+blueprint:
+  name: LED Notifications based on combo of Door and Garage
+  description: The idea is to matrix a Door lock status and a garage door (cover) status to give you different light effects. Also it will fire off a moible phone notificaiton. For this blueprint to work, however, you MUST have two separate inovelli scripts installed (inovelli_led.yaml & inovelli_led_set_defaults.yaml).
+
+  domain: automation
+  input:
+    lock:
+      name: Door Lock
+      description: The lock that we want to trigger on
+      default: lock.august_smart_lock_pro_3rd_gen
+      selector:
+        entity:
+          domain: lock
+    cover:
+      name: Garage Door
+      default: cover.garage_door
+      selector:
+        entity:
+          domain: cover
+    light:
+      name: Inovelli Light
+      description: zwave_js supported Inovelli lights will show up here
+      default: light.red_series_dimmer
+      selector:
+        entity:
+          integration: zwave_js
+          # manufacturer: Inovelli
+          domain: light
+
+    effect:
+      description: 'Choose a state transition effect.'
+      selector:
+        select:
+          options:
+            - "Off"
+            - Solid
+            - Chase
+            - Fast Blink
+            - Slow Blink
+            - Blink
+            - Pulse
+            - Breath
+    duration:
+      description: 'How long should the effect run?'
+      selector:
+        select:
+          options:
+            - "Off"
+            - 1 Second
+            - 2 Seconds
+            - 3 Seconds
+            - 4 Seconds
+            - 5 Seconds
+            - 6 Seconds
+            - 7 Seconds
+            - 8 Seconds
+            - 9 Seconds
+            - 10 Seconds
+            - 15 Seconds
+            - 20 Seconds
+            - 25 Seconds
+            - 30 Seconds
+            - 35 Seconds
+            - 40 Seconds
+            - 45 Seconds
+            - 50 Seconds
+            - 55 Seconds
+            - 60 Seconds
+            - 2 Minutes
+            - 3 Minutes
+            - 4 Minutes
+            # - 10 Minutes
+            # - 15 Minutes
+            # - 30 Minutes
+            # - 45 Minutes
+
+    door_locked_garage_closed_color:
+      name: Door Locked / Garage Close Color
+      default: Green
+      selector:
+        select:
+          options:
+            - "Off"
+            - Red
+            - Orange
+            - Yellow
+            - Green
+            - Cyan
+            - Teal
+            - Blue
+            - Purple
+            - Light Pink
+            - Pink
+    door_locked_garage_open_color:
+      name: Door Locked / Garage Open
+      description: Pick a color for the combo of an locked door and an open garage
+      default: Yellow
+      selector:
+        select:
+          options:
+            - "Off"
+            - Red
+            - Orange
+            - Yellow
+            - Green
+            - Cyan
+            - Teal
+            - Blue
+            - Purple
+            - Light Pink
+            - Pink
+    door_unlocked_garage_closed_color:
+      name: Door Unlocked / Garage Close Color
+      default: Purple
+      selector:
+        select:
+          options:
+            - "Off"
+            - Red
+            - Orange
+            - Yellow
+            - Green
+            - Cyan
+            - Teal
+            - Blue
+            - Purple
+            - Light Pink
+            - Pink
+    door_unlocked_garage_open_color:
+      name: Door Unlocked / Garage Open
+      description: Pick a color for the combo of an unlocked door and an open garage
+      default: Red
+      selector:
+        select:
+          options:
+            - "Off"
+            - Red
+            - Orange
+            - Yellow
+            - Green
+            - Cyan
+            - Teal
+            - Blue
+            - Purple
+            - Light Pink
+            - Pink
+    notify_device:
+      name: Device to notify
+      description: Device needs to run the official Home Assistant app to receive notifications
+      selector:
+        device:
+          integration: mobile_app
+mode: restart
+
+
+trigger:
+  - platform: state
+    entity_id: !input cover
+    to: 'open'
+  - platform: state
+    entity_id: !input cover
+    to: 'closed'
+  - platform: state
+    entity_id: !input lock
+    to: 'locked'
+  - platform: state
+    entity_id: !input lock
+    to: 'unlocked'
+
+action:
+  - choose:
+      - conditions:  #Door Locked / Garage Locked
+          - condition: state
+            entity_id: !input cover
+            state: closed
+          - condition: state
+            entity_id: !input lock
+            state: locked
+        sequence:
+          - service: script.inovelli_led_set_defaults
+            data:
+              entity_id: !input light
+              color: !input door_locked_garage_closed_color
+          - service: script.inovelli_led
+            data:
+              entity_id: !input light
+              color: !input door_locked_garage_closed_color
+              effect: !input effect
+              duration: !input duration
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: All Closed
+      - conditions: # Door Unlocked / Garage Locked
+          - condition: state
+            entity_id: !input cover
+            state: closed
+          - condition: state
+            entity_id: !input lock
+            state: unlocked
+        sequence:
+          - service: script.inovelli_led_set_defaults
+            data:
+              entity_id: !input light
+              color: !input door_unlocked_garage_closed_color
+          - service: script.inovelli_led
+            data:
+              entity_id: !input light
+              color: !input door_unlocked_garage_closed_color
+              effect: !input effect
+              duration: !input duration
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: Garage Closed - Door Unlocked
+      - conditions: # Door Locked / Garage Open
+          - condition: state
+            entity_id: !input cover
+            state: open
+          - condition: state
+            entity_id: !input lock
+            state: locked
+        sequence:
+          - service: script.inovelli_led_set_defaults
+            data:
+              entity_id: !input light
+              color: !input door_locked_garage_open_color
+          - service: script.inovelli_led
+            data:
+              entity_id: !input light
+              color: !input door_locked_garage_open_color
+              effect: !input effect
+              duration: !input duration
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: Garage Open - Door Locked
+      - conditions: # Door Open / Garage Open
+          - condition: state
+            entity_id: !input cover
+            state: open
+          - condition: state
+            entity_id: !input lock
+            state: unlocked
+        sequence:
+          - service: script.inovelli_led_set_defaults
+            data:
+              entity_id: !input light
+              color: !input door_unlocked_garage_open_color
+          - service: script.inovelli_led
+            data:
+              entity_id: !input light
+              color: !input door_unlocked_garage_open_color
+              effect: !input effect
+              duration: !input duration
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: Garage Open - Door Unlocked

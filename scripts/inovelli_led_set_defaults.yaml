@@ -1,0 +1,187 @@
+---
+# Incorporates default LED color + dimmer brightness.
+# Originally in a script by Kevin Schlichter https://github.com/kschlichter/Home-Assistant-Inovelli-Red-Dimmer-Switch
+variables:
+  # REQUIRED to be one of these options: "zwave", "ozw", "zwave_js"
+  zwave_integration: "zwave_js"
+
+  # * Strongly recommended -> Use the passed model type ("dimmer", "switch", "combo_light") when present.
+  # * If not present, then attempt to identify the type using the "product_name" attribute (which is only 
+  #   unfortunately only available in the original zwave integration).
+  # * Finally, assume the model type is "dimmer".
+  model: |
+    {% if model is string %}
+      {{ model }}
+    {%- elif state_attr(entity_id, 'product_name') is string %}
+      {%- if 'LZW31' in state_attr(entity_id, 'product_name') %}
+        dimmer
+      {%- elif 'LZW36' in state_attr(entity_id, 'product_name') %}
+        combo_light
+      {%- else %}
+        switch
+      {%- endif %}
+    {%- else %}
+      dimmer
+    {%- endif %}
+  node_id: '{{ state_attr(entity_id,"node_id") }}'
+  color: '{{ color|default("Blue") }}'
+  level_on: '{{ level_on|default("10") }}'
+  level_off: '{{ level_off|default("3") }}'
+  parameters:
+    dimmer:
+      color: 13
+      level_on: 14
+      level_off: 15
+    combo_light:
+      color: 18
+      level_on: 19
+      level_off: 22
+    combo_fan:
+      color: 20
+      level_on: 21
+      level_off: 23
+    switch:
+      color: 5
+      level_on: 6
+      level_off: 7
+  colors:
+    "Off": 0
+    "Red": 1
+    "Orange": 21
+    "Yellow": 42
+    "Green": 85
+    "Cyan": 127
+    "Teal": 145
+    "Blue": 170
+    "Purple": 195
+    "Light Pink": 220
+    "Pink": 234
+sequence:
+  - variables:
+      color: '{{ colors[color|title] }}'
+      color_parameter: '{{ parameters[model]["color"] }}'
+      level_on_parameter: '{{ parameters[model]["level_on"] }}'
+      level_off_parameter: '{{ parameters[model]["level_off"] }}'
+
+  # - service: script.debug
+  #   data:
+  #     id: 02
+  #     message: |
+  #       node_id: '{{ node_id }}'
+  #       parameter: '{{ parameters[model]["color"] }}'
+  #       color: '{{ color }}'
+  #       level_on: '{{ level_on }}'
+  #       level_off: '{{ level_off }}'
+
+  - choose:
+      # The Z-Wave JS integration requires this service call.
+      - conditions:
+          - '{{ zwave_integration == "zwave_js" }}'
+        sequence:
+          - service: zwave_js.set_config_parameter
+            target:
+              entity_id: '{{ entity_id }}'
+            data:
+              parameter: '{{ color_parameter }}'
+              value: '{{ color }}'
+
+          - service: zwave_js.set_config_parameter
+            target:
+              entity_id: '{{ entity_id }}'
+            data:
+              parameter: '{{ level_on_parameter }}'
+              value: '{{ level_on }}'
+
+          # - service: ozw.set_config_parameter
+          - service: zwave_js.set_config_parameter
+            target:
+              entity_id: '{{ entity_id }}'
+            data:
+              parameter: '{{ level_off_parameter }}'
+              value: '{{ level_off }}'
+
+      # The OZW integration requires this service call.
+      - conditions:
+          - '{{ zwave_integration == "ozw" }}'
+        sequence:
+          - service: ozw.set_config_parameter
+            data:
+              node_id: '{{ node_id }}'
+              parameter: '{{ color_parameter }}'
+              value: '{{ color }}'
+
+          - service: ozw.set_config_parameter
+            data:
+              node_id: "{{ node_id }}"
+              parameter: '{{ level_on_parameter }}'
+              value: '{{ level_on }}'
+
+          # - service: ozw.set_config_parameter
+          - service: zwave_js.set_config_parameter
+            data:
+              node_id: "{{ node_id }}"
+              parameter: '{{ level_off_parameter }}'
+              value: '{{ level_off }}'
+
+    # The Z-wave integration requires this service call.
+    default:
+      - service: zwave.set_config_parameter
+        data:
+          node_id: '{{ node_id }}'
+          parameter: '{{ color_parameter }}'
+          size: 2
+          value: '{{ color }}'
+
+      - service: zwave.set_config_parameter
+        data:
+          node_id: "{{ node_id }}"
+          parameter: '{{ level_on_parameter }}'
+          size: 1
+          value: '{{ level_on }}'
+
+      - service: zwave.set_config_parameter
+        data:
+          node_id: "{{ node_id }}"
+          parameter: '{{ level_off_parameter }}'
+          size: 1
+          value: '{{ level_off }}'
+          
+fields:
+  entity_id:
+    description: Light or switch which represents 
+    example: light.red_series_dimmer
+    selector:
+      entity:
+        #integration: zwave_js
+  model:
+    description: 'Device type: dimmer (default), switch, combo_light'
+    example: dimmer
+    selector:
+      select:
+        options:
+          - dimmer
+          - switch
+          - combo_light
+  color:
+    description: 'Choose a color.'
+    example: purple
+    selector:
+      select:
+        options:
+          - "Off"
+          - Red
+          - Orange
+          - Yellow
+          - Green
+          - Cyan
+          - Teal
+          - Blue
+          - Purple
+          - Light Pink
+          - Pink
+  level_on:
+    description: LED Brightness when on
+    example: 10
+  level_off:
+    description: LED Brightness when off
+    example: 3
