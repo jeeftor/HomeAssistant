@@ -10,7 +10,7 @@
 #
 
 blueprint:
-  name: LED Notifications based on combo of Door and Garage
+  name: Inovelli Dimmer - LED Notifications based on combo of Door and Garage
   description: The idea is to matrix a Door lock status and a garage door (cover) status to give you different light effects. Also it will fire off a moible phone notificaiton. For this blueprint to work, however, you MUST have two separate inovelli scripts installed (inovelli_led.yaml & inovelli_led_set_defaults.yaml).
 
   domain: automation
