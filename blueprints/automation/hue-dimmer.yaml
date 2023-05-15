@@ -1,0 +1,230 @@
+---
+blueprint:
+  name: Hue Dimmer 🎛️ Hue Dimmer 🔅️ Action 💡️ (Zigbee2MQTT)
+  description: >
+    ## Overview
+
+    This blueprint will enable a [Hue Dimmer Remote](https://www.zigbee2mqtt.io/devices/324131092621.html) (connected via Zigbee2MQTT) to function as a scene controller. 
+
+    ```
+        ┌───────┐
+        │┌─────┐│
+        ││ ON  ││  Press ON to cycle through Scenes and Scripts
+        │├─────┤│
+        ││  *  ││
+        │├─────┤│ 
+        ││  *  ││
+        │├─────┤│
+        ││ OFF ││  Press OFF to cycle through Scenes and Scripts
+        │└─────┘│
+        └───────┘
+    ```
+
+    ## Requirements
+
+    The main requirement of this blueprint is the existance of an **Input Text Helper** named: `zigbee2mqtt_json`
+
+    ## Details
+
+     At each press of the `ON` or `OFF` button the automation will send a request to change to a specific scene as well as launch a specific script. If either of these scenes or scripts exists they will be activated.
+
+     Both Scenes an Scripts follow a specific naming convention:
+
+     For example if you have a device called `Basement Remote` (in Z2M) and it will look for the following scenes/scripts:
+
+
+     When iterating through presses of the `ON` button:
+
+
+     - `script.basement_remote_on_0` / `scene.basement_remote_on_0`
+     - `script.basement_remote_on_1` / `scene.basement_remote_on_1`
+     - `script.basement_remote_on_2` / `scene.basement_remote_on_2`
+
+
+     When iterating through the `OFF` button:
+
+     - `script.basement_remote_off_0` / `scene.basement_remote_off_0`
+     - `script.basement_remote_off_1` / `scene.basement_remote_off_1`
+     - `script.basement_remote_off_2` / `scene.basement_remote_off_2`
+
+    **⚠️ NOTE ⚠️: The blueprint requires the following input text helper: `input_text.zigbee2mqtt_json` to exist and have a default value of `{}`**
+
+  domain: automation
+  # icon: "mdi:remote"
+  input:
+    device_topic:
+      name: Z2M Device Name
+      description: "This will be used to calculate the topic that Z2M is publishg to. So for example if you have the topic `zigbee2mqtt/Basement Remote/action` your device name woudl be: `Basement Remote`"
+      selector:
+        text:
+    on_count:
+      name: ON count
+      description: >
+        The maximum number of scenes available to cycle through. 
+
+
+        **⚠️NOTE:⚠️** this is a `0` based value so if you have `5` scenes it will look for scenes `0` through `4`
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+          mode: box
+    off_count:
+      name: OFF count
+      description: >
+        The maximum number of scenes available to cycle through.
+
+
+        **⚠️NOTE:⚠️** this is a `0` based value so if you have `5` scenes it will look for scenes `0` through `4`
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+          mode: box
+
+mode: queued
+max: 10
+
+variables:
+  # input_text.zigbee2mqtt_json
+  # current_scene: "{{ state_attr('input_number.remote_basement_scene_selector', 'value') | int }}"
+  device_topic: !input device_topic
+  # my_light: !input light_entity
+
+  # Parse the existing helper - if its empty, unset or actually has valid data this should work
+  stored_json_text: '{{ iif(states(''input_text.zigbee2mqtt_json'') in [None, '''',''{}''], dict({device_topic:{"state":"off","scene":0}}) | to_json,  states(''input_text.zigbee2mqtt_json'')) }}'
+
+  # Extract light state
+  light_state: "{{ (stored_json_text.get(device_topic, dict())).get('state','off') }}"
+  # Calculate current scene ID a s well as the "rollover mod values for an on or off press"
+  current_scene: "{{ (stored_json_text.get(device_topic, dict())).get('scene',0) | int }}"
+
+  # Assuming a secondary On or Off is pressed - calculate what the new ID woudl be taking into account rollover
+  on_count: !input on_count
+  off_count: !input off_count
+  on_scene_id: "{{ ((current_scene + 1) % (on_count | int)) | string}}"
+  off_scene_id: "{{ ((current_scene + 1) % (off_count | int)) | string}}"
+
+  # Extract the command from MQTT payload - and construct the trigger key which is made up
+  # of the last stored light state + the command
+  command: "{{ trigger.payload.split('_')[0] }}"
+  trigger_key: "{{light_state}}:{{command}}"
+
+  # Construct various dictionaries entries for this automation
+  # Off/On Cycle will use their according data values as well
+  dict_base: "{{dict({device_topic:{'state':command, 'scene':0}})}}"
+  dict_on: "{{ dict({device_topic:{'state':command, 'scene':on_scene_id}}) }} "
+  dict_off: "{{ dict({device_topic:{'state':command, 'scene':off_scene_id}}) }} "
+
+  # These dictionaries above will be combined with a filtered dictionary
+  # We just want to update the existing dictionaries which is supposed done by making a new dictionary
+  # out of a filtered dicctionary and one of the oens above
+  dict_filtered: "{{ dict( (stored_json_text).items() |  rejectattr('0','eq',device_topic) | list ) }}"
+
+  # Build out JSON Packets
+  #
+  # If we have a state transition we'll send the base_json packet
+  # if we are Cycling we send either on_json or off_json accordingly
+  base_json: " {{ dict(dict_base, **dict_filtered) }}"
+  on_json: " {{ dict(dict_on, **dict_filtered)}}"
+  off_json: " {{ dict(dict_off, **dict_filtered)}}"
+
+  # Generate Strings arrays
+  strings_on: "{{[device_topic | lower | replace(' ','_'), command, on_scene_id] }}"
+  strings_off: "{{[device_topic | lower | replace(' ','_'), command, off_scene_id] }}"
+
+  # Build out the prefix for actions
+  prefix: "{{ device_topic | lower | replace(' ','_') ~ '_' ~ command ~ '_'}}"
+  scene_dict: "{% if light_state == 'on' %}{{ dict({'on': on_scene_id, 'off': '0'}) }}{% else %}{{ dict({'on': '0', 'off': off_scene_id}) }}{% endif %}"
+  scene: "{{ dict({'on':('scene.' ~ (strings_on | join('_'))),'off':('scene.' ~ (strings_off | join('_')))  })  }}"
+  script: "{{ dict({'on':('script.' ~ (strings_on | join('_'))),'off':('script.' ~ (strings_off | join('_')))  })  }}"
+
+  # Make a list of all scenes/scripts that exist
+  # this will be used later for a boolean check
+  all_scenes: "{{ states.scene | map(attribute='entity_id') | list  }}"
+  all_scripts: "{{ states.script | map(attribute='entity_id') | list  }}"
+
+trigger:
+  - platform: mqtt
+    topic: zigbee2mqtt/+/action
+
+condition:
+  - alias: "Trigger on correct action"
+    condition: template
+    value_template: "{{ (trigger.topic == 'zigbee2mqtt/' + device_topic + '/action') and (trigger.payload in ['on_press','off_press'])}}"
+
+action:
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.zigbee2mqtt_json
+    data:
+      value: "{{ base_json }}"
+  - choose:
+      # ON
+      - conditions:
+          - condition: template
+            alias: "ON"
+            value_template: "{{ trigger_key == 'off:on' }}"
+        sequence:
+          - alias: "Set Base JSON"
+            service: input_text.set_value
+            target:
+              entity_id: input_text.zigbee2mqtt_json
+            data:
+              value: "{{base_json}}"
+
+      # ON_CYCLE
+      - conditions:
+          - condition: template
+            alias: "ON_CYCLE"
+            value_template: "{{ trigger_key == 'on:on' }}"
+        sequence:
+          - alias: "Increment Scene"
+            service: input_text.set_value
+            target:
+              entity_id: input_text.zigbee2mqtt_json
+            data:
+              value: "{{on_json}}"
+
+      # OFF
+      - conditions:
+          - condition: template
+            alias: "OFF"
+            value_template: "{{ trigger_key == 'on:off' }}"
+        sequence:
+          - alias: "Set Base JSON"
+            service: input_text.set_value
+            target:
+              entity_id: input_text.zigbee2mqtt_json
+            data:
+              value: "{{base_json}}"
+
+      # OFF_CYCLE
+      - conditions:
+          - condition: template
+            alias: "OFF_CYCLE"
+            value_template: "{{ trigger_key == 'off:off' }}"
+        sequence:
+          - alias: "Increment Scene"
+            service: input_text.set_value
+            target:
+              entity_id: input_text.zigbee2mqtt_json
+            data:
+              value: "{{off_json}}"
+  - parallel:
+      - sequence:
+          - condition: template
+            value_template: "{{ 'scene.' ~ prefix ~ scene_dict[command] in all_scenes }}"
+          - service: scene.turn_on
+            data:
+              transition: 1
+            target:
+              entity_id: "scene.{{prefix ~ scene_dict[command]}}"
+      - sequence:
+          - condition: template
+            value_template: "{{ 'script.' ~ prefix ~ scene_dict[command] in all_scripts }}"
+          - service: "script.{{prefix ~ scene_dict[command]}}"

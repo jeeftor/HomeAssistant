@@ -1,0 +1,290 @@
+---
+blueprint:
+  name: AWTRIX 🚪️ Door Status Monitor 🔍️
+  description: >
+    This blueprint is designed to monitor the status of a door (or any other contact sensor) 
+    displaying alerts when the status changeas as well as tracking the time a specific door has been open.
+
+    Generally it will track 4 different states:
+
+    - `opened`: When the door opens
+
+    - `is_opened`: How long a door has been ajar
+
+    - `closed`: When a door closes
+
+    - `error`: Any error associated with the sensor
+
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: false
+    app_name:
+      name: Awtrix Applicaiton name
+      description: This is the app name listed in the MQTT topic - it should be unique
+      selector:
+        text:
+      default: door_monitor
+    trigger_sensor:
+      name: Door Sensor
+      description: Binary sensor to track door status
+      selector:
+        entity:
+          domain:
+            - binary_sensor
+            - input_boolean
+    open_text:
+      name: Device Opened Message
+      description: Text to be displayed when an open event occurs
+      selector:
+        text:
+      default: "open"
+    open_sound:
+      name: Open Notification Sound
+      description: >-
+        A sound to play when the door opens. I personally use:
+
+            short:d=4,o=5,b=100:16e6
+
+        Leave this blank if you don't want a sound
+      selector:
+        text:
+      default: ""
+    open_icon:
+      name: Open icon
+      description: >
+        Icon to show on Door Open notification (usually animated).
+
+        Here are some examples I use:
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53195_icon_thumb.gif?v=3) `53195` - Sliding Door Open
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53234_icon_thumb.gif?v=3) `53234` - House/Shed door opening
+
+      selector:
+        text:
+      default: "53195"
+    is_open_text:
+      name: Device Remained Open Message
+      selector:
+        text:
+      default: ""
+      description: >
+        The default is to show just an icon and a time-display - if you add text here it will be appended to the message
+    is_open_icon:
+      name: Is-Open Icon
+      description: >
+        Icon to show for door remaining open
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53201_icon_thumb.png?v=1) `53201` - Sliding Door Is Open 
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53236_icon_thumb.gif?v=1) `53236` - House/Shed door open
+
+      selector:
+        text:
+      default: "53201"
+    close_text:
+      name: Device Closed Message
+      description: This text will be displayed along with the close icon
+      selector:
+        text:
+      default: "close"
+    close_sound:
+      name: Closing sound for Notification
+      description: >
+        Sound to play upon door closing. I personally use:
+
+            two short:d=4,o=5,b=100:16e6,16e6
+
+        Leave this blank if you don't want a sound
+      selector:
+        text:
+      default: ""
+    close_icon:
+      name: Close icon
+      description: >
+        Icon to show for door closing notification
+
+        Here are some examples I use:
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53197_icon_thumb.gif?v=3) `53197` - Sliding Door Close
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53235_icon_thumb.gif?v=3) `53235` - House/Shed door Close
+
+      selector:
+        text:
+      default: "53197"
+
+    error_text:
+      name: Error Message
+      description: Display text with error icon
+      selector:
+        text:
+      default: "error"
+    error_icon:
+      name: Error Icon
+      description: >
+        Icon to show if the state of the sensor is an unknown state. If you are running an MQTT sensor this could
+        indicate the server is down or the sensor dropped off your network.
+
+        Here are some examples I use:
+
+         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53227_icon_thumb.gif?v=1) `53227` - Sliding Door Error
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53237_icon_thumb.gif?v=3) `53237` - House/shed Error status
+
+      selector:
+        text:
+      default: "53227"
+    error_sound:
+      name: Sound for initial error Notification
+      description: >
+        Sound to play upon door closing. I personally use:
+
+            s:d=4,o=5,b=45:32d,32g#,32d,32f,32c#,32e
+
+        Leave this blank if you don't want a sound
+      selector:
+        text:
+      default: ""
+
+mode: queued
+max: 10
+
+variables:
+  device_id: !input awtrix
+  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
+  app: !input app_name
+  message_topic: "{{awtrix ~ '/custom/' ~ app }}"
+  notification_topic: "{{awtrix ~ '/notify' }}"
+  trigger_sensor: !input trigger_sensor
+  last_change_seconds: "{{ as_timestamp(now()) - as_timestamp(states[trigger_sensor].last_changed | default(0)) }}"
+  last_changed_str: "{{relative_time(states[trigger_sensor].last_changed
+    | default(0))
+    | replace('hours','hr')
+    | replace('hour','hr')
+    | replace('seconds','sec')
+    | replace('minutes','min')
+    | replace('minute','min')}}"
+
+  open_icon: !input open_icon
+  open_text: !input open_text
+  open_sound: !input open_sound
+
+  is_open_icon: !input is_open_icon
+  is_open_text: !input is_open_text
+
+  # If we have open text then add it and a space to the end of the last_changed_str message
+  is_open_message: "{{iif(open_text,last_changed_str,[last_changed_str,open_text]|join(' '))}}"
+  close_icon: !input close_icon
+  close_text: !input close_text
+  close_sound: !input close_sound
+  error_icon: !input error_icon
+  error_text: !input error_text
+  error_sound: !input error_sound
+
+  open_payload: >-
+    {"text":"{{open_text}}", "icon":"{{open_icon}}", "sound":"{{open_sound}}"}
+  close_payload: >-
+    {"text":"{{close_text}}", "icon":"{{close_icon}}", "sound":"{{close_sound}}"}
+  is_open_payload: >-
+    {"text": "{{is_open_message}}", "icon":"{{is_open_icon}}"}
+  error_message_payload: >-
+    {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00"}
+  error_alert_payload: >-
+    {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00", "sound":"{{error_sound}}"}
+
+trigger_variables:
+  trigger_sensor: !input trigger_sensor
+
+trigger:
+  - platform: time_pattern
+    minutes: /1
+    id: time
+  - platform: template
+    id: opened
+    value_template: "{{ states(trigger_sensor) == 'on' }}"
+  - platform: template
+    value_template: "{{ states(trigger_sensor) == 'off' }}"
+    id: closed
+  - platform: template
+    value_template: "{{ states(trigger_sensor) not in ['off','on'] }}"
+    id: error
+
+condition: []
+action:
+  - choose:
+      # Time update and door is still open
+      - conditions:
+          - and:
+              - condition: trigger
+                id: time
+              - condition: template
+                value_template: "{{ states(trigger_sensor) == 'on' }}"
+              - condition: template
+                value_template: "{{ last_change_seconds > 60 }}"
+        sequence:
+          - service: mqtt.publish
+            data:
+              qos: 0
+              retain: false
+              topic: "{{message_topic}}"
+              payload:
+                "{{is_open_payload}}"
+                # {"text": "{{last_changed_str}}", "icon":"{{icon_is_open}}"}
+
+      # Door open logic (Notification + message)
+      - conditions:
+          - condition: trigger
+            id: opened
+        sequence:
+          - service: mqtt.publish
+            data:
+              qos: 0
+              retain: false
+              topic: "{{notification_topic}}"
+              payload: "{{open_payload}}"
+
+      # Door open logic (Notification + message)
+      - conditions:
+          - condition: trigger
+            id: closed
+        sequence:
+          - service: mqtt.publish
+            data:
+              qos: 0
+              retain: false
+              topic: "{{notification_topic}}"
+              payload: "{{close_payload}}"
+
+          - service: mqtt.publish
+            data:
+              qos: 0
+              retain: false
+              topic: "{{message_topic}}"
+              payload: "{}"
+
+      # Door error status
+      - conditions:
+          - condition: trigger
+            id: error
+        sequence:
+          - service: mqtt.publish
+            data:
+              qos: 0
+              retain: false
+              topic: "{{notification_topic}}"
+              payload: "{{error_alert_payload}}"
+          - service: mqtt.publish
+            data:
+              qos: 0
+              retain: false
+              topic: "{{message_topic}}"
+              payload: "{{error_message_payload}}"
