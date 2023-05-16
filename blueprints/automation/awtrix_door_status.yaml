@@ -68,6 +68,8 @@ blueprint:
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53234_icon_thumb.gif?v=3) `53234` - House/Shed door opening
 
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53266_icon_thumb.gif?v=3) `53266` - Front Door opening
+
       selector:
         text:
       default: "53195"
@@ -83,9 +85,11 @@ blueprint:
       description: >
         Icon to show for door remaining open
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53201_icon_thumb.png?v=1) `53201` - Sliding Door Is Open 
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53201_icon_thumb.png?v=1) `53201` - Sliding Door is Open 
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53236_icon_thumb.gif?v=1) `53236` - House/Shed door open
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53236_icon_thumb.gif?v=1) `53236` - House/Shed door is open
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53267_icon_thumb.gif?v=4) `53267` - Front door is open
 
       selector:
         text:
@@ -116,7 +120,9 @@ blueprint:
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53197_icon_thumb.gif?v=3) `53197` - Sliding Door Close
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53235_icon_thumb.gif?v=3) `53235` - House/Shed door Close
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53235_icon_thumb.gif?v=3) `53235` - House/Shed Door Close
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53265_icon_thumb.gif?v=3) `53265` - Front Door Close
 
       selector:
         text:
@@ -139,6 +145,8 @@ blueprint:
          - ![](https://developer.lametric.com/content/apps/icon_thumbs/53227_icon_thumb.gif?v=1) `53227` - Sliding Door Error
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53237_icon_thumb.gif?v=3) `53237` - House/shed Error status
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53268_icon_thumb.gif?v=3) `53268` - Front Door Error status
 
       selector:
         text:
