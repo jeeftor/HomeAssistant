@@ -105,7 +105,7 @@ blueprint:
       description: >
         Sound to play upon door closing. I personally use:
 
-            two short:d=4,o=5,b=100:16e6,16e6
+            two_short:d=4,o=5,b=100:16e6,16e6
 
         Leave this blank if you don't want a sound
       selector:
@@ -156,7 +156,7 @@ blueprint:
       description: >
         Sound to play upon door closing. I personally use:
 
-            s:d=4,o=5,b=45:32d,32g#,32d,32f,32c#,32e
+            sms:d=4,o=5,b=45:32d,32g#,32d,32f,32c#,32e
 
         Leave this blank if you don't want a sound
       selector:
