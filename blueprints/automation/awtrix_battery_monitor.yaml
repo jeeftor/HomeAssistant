@@ -1,0 +1,78 @@
+---
+blueprint:
+  name: AWTRIX 📱️ Mobile App - Device 🔋️ Battery Monitor 🪫️
+  description: >
+    This blueprint will print out the battery status of a device available to home assistant.
+    It uses a custom icon set you need to install.
+
+    You can find all the icons here: https://github.com/jeeftor/HomeAssistant/tree/master/icons/phone
+
+    ### On Battery Icons
+
+    ![](https://developer.lametric.com/content/apps/icon_thumbs/53204_icon_thumb.png?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53205_icon_thumb.png?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53207_icon_thumb.png?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53208_icon_thumb.png?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53209_icon_thumb.png?v=1)
+
+    ### Charging Icons
+
+    ![](https://developer.lametric.com/content/apps/icon_thumbs/53212_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53213_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53214_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53215_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53216_icon_thumb.gif?v=1)
+
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: false
+    app_name:
+      name: Awtrix Applicaiton name
+      description: This is the app name listed in the MQTT topic - it should be unique
+      selector:
+        text:
+      default: phone_battery
+    battery:
+      name: Phone or device
+      description: A phone connected via the mobile app
+      selector:
+        entity:
+          multiple: false
+          filter:
+            - integration: mobile_app
+              device_class: battery
+        # multiple: false
+    message_text:
+      name: Text to Display
+      description: This is the text to dispally on the screen
+      selector:
+        text:
+      default: iphone
+
+mode: restart
+variables:
+  device_id: !input awtrix
+  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
+  app: !input app_name
+  message_topic: "{{awtrix ~ '/custom/' ~ app }}"
+  battery_sensor: !input battery
+  base_icon: "{{states[battery_sensor] }}"
+  message_text: !input message_text
+
+trigger:
+  - platform: time_pattern
+    minutes: /1
+
+condition: []
+action:
+  - service: mqtt.publish
+    data:
+      qos: 0
+      topic: "{{message_topic}}"
+      payload: >-
+        {"icon":"{{ states[battery_sensor].attributes.icon 
+        | replace('mdi:','') 
+        | replace('90','80') 
+        | replace('70','60')
+        | replace('50','40')
+        | replace('30','20')}}","text":"{{message_text}}","progress":"{{states[battery_sensor].state}}","pushIcon":1}
