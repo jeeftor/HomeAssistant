@@ -48,6 +48,25 @@ blueprint:
       selector:
         text:
       default: iphone
+    push_icon:
+      name: Icon Mode
+      description: >
+        Please select the pushIcon setting for the icon
+
+          - `0`  Icon doesn't move
+
+          - `1`  Icon moves with text and will not appear again
+
+          - `2` Icon moves with text but appears again when the text starts to scroll again
+      selector:
+        select:
+          options:
+            - label: Icon doesn't move (default)
+              value: "0"
+            - label: Icon moves with text and will not appear again
+              value: "1"
+            - label: Icon moves with text but appears again when the text starts to scroll again
+              value: "2"
 
 mode: restart
 variables:
@@ -58,6 +77,7 @@ variables:
   battery_sensor: !input battery
   base_icon: "{{states[battery_sensor] }}"
   message_text: !input message_text
+  push_icon: !input push_icon
 
 trigger:
   - platform: time_pattern
@@ -75,4 +95,7 @@ action:
         | replace('90','80') 
         | replace('70','60')
         | replace('50','40')
-        | replace('30','20')}}","text":"{{message_text}}","progress":"{{states[battery_sensor].state}}","pushIcon":1}
+        | replace('30','20')}}",
+        "text":"{{message_text}}",
+        "pushIcon":{{push_icon}},
+        "progress":"{{states[battery_sensor].state}}","pushIcon":1}
