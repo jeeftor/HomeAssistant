@@ -70,6 +70,7 @@ blueprint:
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53266_icon_thumb.gif?v=3) `53266` - Front Door opening
 
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/23103_icon_thumb.gif?v=1) `23103` - Window opening
       selector:
         text:
       default: "53195"
@@ -90,6 +91,8 @@ blueprint:
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53236_icon_thumb.gif?v=1) `53236` - House/Shed door is open
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53267_icon_thumb.gif?v=4) `53267` - Front door is open
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53290_icon_thumb.gif?v=1) `53290` - Window is open
 
       selector:
         text:
@@ -124,6 +127,8 @@ blueprint:
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53265_icon_thumb.gif?v=3) `53265` - Front Door Close
 
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/23104_icon_thumb.gif?v=1) `23104` - Window Close
+
       selector:
         text:
       default: "53197"
@@ -144,9 +149,11 @@ blueprint:
 
          - ![](https://developer.lametric.com/content/apps/icon_thumbs/53227_icon_thumb.gif?v=1) `53227` - Sliding Door Error
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53237_icon_thumb.gif?v=3) `53237` - House/shed Error status
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53237_icon_thumb.gif?v=3) `53237` - House/shed Error
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53268_icon_thumb.gif?v=3) `53268` - Front Door Error status
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53268_icon_thumb.gif?v=3) `53268` - Front Door Error
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/53291_icon_thumb.gif?v=1) `53291` - Window Error
 
       selector:
         text:
