@@ -1,0 +1,424 @@
+---
+blueprint:
+  name: AWTRIX Weather
+  description: >
+    This blueprint will print out the battery status of a device available to home assistant.
+    It uses a custom icon set you need to install.
+
+    For Clear night we support multiple moon phases
+
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: false
+
+    forecast:
+      name: Daily Forecast
+      description: >
+        The HACS tempest weatherflow integration provides both an hourly and a daily forecast. Make sure to select the daily forceast if you want a high/low temp range
+      selector:
+        entity:
+          domain:
+            - weather
+          multiple: false
+    color_matrix_json:
+      name: Color Matrix
+      description: >
+        Here you can enter a temperature to color mapping. 
+
+        > Please note the format is *NOT JSON*, but rather it is Python dictionary format
+                
+
+        Some possible mappings are:
+
+        #### USA: Farenheit 0-100 (Based on NOAA scale from 0-100)
+
+
+            {0: '#FEC4FF',10: '#D977DF',20: '#9545BC',30: '#4B379C',40: '#31B8DB',50: '#31DB8B',60: '#6ED228',70: '#FFFF28',80: '#F87E27',90: '#CF3927',100: '#A12527'}
+
+
+        #### EURO: -12°c to  -38°c based on USA NOAA Colors 
+
+            {-12: "#D977DF",-6: "#9545BC",-1: "#4B379C",0: "#FEC4FF",4: "#31B8DB",10: "#31DB8B",15: "#6ED228",21: "#FFFF28",27: "#F87E27",32: "#CF3927",38: "#A12527"}
+
+      selector:
+        text:
+      default:
+        {
+          "0": "#FEC4FF",
+          "10": "#D977DF",
+          "20": "#9545BC",
+          "30": "#4B379C",
+          "40": "#31B8DB",
+          "50": "#31DB8B",
+          "60": "#6ED228",
+          "70": "#FFFF28",
+          "80": "#F87E27",
+          "90": "#CF3927",
+          "100": "#A12527",
+        }
+
+    moon:
+      name: Moon Sensor
+      description: >
+        To setup a moon sensor see here: https://www.home-assistant.io/integrations/moon/
+      selector:
+        entity:
+          multiple: false
+          filter:
+            integration: moon
+    #-----------------------------------------
+    # This was really annoying to generate :)
+    #-----------------------------------------
+    icon_clear_night:
+      name: Icon for clear-night
+      description: >
+        This is the icon ID which maps to the weather state: `clear-night`. 
+
+        By default this value is not set.
+        If its unset instead the blueprint will use the following icons to show a "moon phase". If you don't want this functionality please enter a value here
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2314_icon_thumb.png?v=1) `2314` - `full_moon`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2315_icon_thumb.png?v=1) `2315` - `waning_gibbous`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2316_icon_thumb.png?v=1) `2316` - `last_quarter`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2317_icon_thumb.png?v=1) `2317` - `waning_crescent`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2318_icon_thumb.png?v=1) `2318` - `new_moon`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2319_icon_thumb.png?v=1) `2319` - `waxing_crescent`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2320_icon_thumb.png?v=1) `2320` - `first_quarter`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2321_icon_thumb.png?v=1) `2321` - `waxing_gibbous`
+
+      selector:
+        text:
+      default: ""
+    icon_cloudy:
+      name: Icon for cloudy
+      description: >
+        This is the icon ID which maps to the weather state: `cloudy`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/2283_icon_thumb.gif?v=1) `2283`
+      selector:
+        text:
+      default: "2283"
+    icon_exceptional:
+      name: Icon for exceptional
+      description: >
+        This is the icon ID which maps to the weather state: `exceptional`
+
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/23683_icon_thumb.gif?v=1) `23683`
+      selector:
+        text:
+      default: "23683"
+    icon_fog:
+      name: Icon for fog
+      description: >
+        This is the icon ID which maps to the weather state: `fog`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/17055_icon_thumb.gif?v=1) `17055`
+      selector:
+        text:
+      default: "17055"
+    icon_hail:
+      name: Icon for hail
+      description: >
+        This is the icon ID which maps to the weather state: `hail`
+      selector:
+        text:
+      default: "xxxxx"
+    icon_lightning:
+      name: Icon for lightning
+      description: >
+        This is the icon ID which maps to the weather state: `lightning`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/29839_icon_thumb.gif?v=1) `29839`
+
+      selector:
+        text:
+      default: "29839"
+    icon_lightning_rainy:
+      name: Icon for lightning-rainy
+      description: >
+        This is the icon ID which maps to the weather state: `lightning-rainy`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/49299_icon_thumb.gif?v=4) `49299`
+      selector:
+        text:
+      default: "49299"
+    icon_partlycloudy:
+      name: Icon for partlycloudy
+      description: >
+        This is the icon ID which maps to the weather state: `partlycloudy`
+         
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/2286_icon_thumb.gif?v=1) `2282`
+
+      selector:
+        text:
+      default: "2282"
+    icon_pouring:
+      name: Icon for pouring
+      description: >
+        This is the icon ID which maps to the weather state: `pouring`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/49300_icon_thumb.gif?v=1) `49300`
+
+      selector:
+        text:
+      default: "49300"
+    icon_rainy:
+      name: Icon for rainy
+      description: >
+        This is the icon ID which maps to the weather state: `rainy`
+      selector:
+        text:
+      default: "xxxxx"
+    icon_snowy:
+      name: Icon for snowy
+      description: >
+        This is the icon ID which maps to the weather state: `snowy`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/2289_icon_thumb.gif?v=1) `2289`
+      selector:
+        text:
+      default: "2289"
+    icon_snowy_rainy:
+      name: Icon for snowy-rainy
+      description: >
+        This is the icon ID which maps to the weather state: `snowy-rainy`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/49301_icon_thumb.gif?v=2) `49301`
+      selector:
+        text:
+      default: "49301"
+    icon_sunny:
+      name: Icon for sunny
+      description: >
+        This is the icon ID which maps to the weather state: `sunny`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/52156_icon_thumb.png?v=1) `52156`
+      selector:
+        text:
+      default: "52156"
+    icon_windy:
+      name: Icon for windy
+      description: >
+        This is the icon ID which maps to the weather state: `windy`
+      selector:
+        text:
+      default: "xxxxx"
+    icon_windy_variant:
+      name: Icon for windy-variant
+      description: >
+        This is the icon ID which maps to the weather state: `windy-variant`
+      selector:
+        text:
+      default: "xxxxx"
+
+mode: restart
+variables:
+  device_id: !input awtrix
+  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
+  message_topic:
+    "{{awtrix ~ '/custom/dev'}}"
+    # message_topic: "{{awtrix ~ '/custom/' ~ app }}"
+  notification_topic: "{{awtrix ~ '/notify' }}"
+
+  forecast: !input forecast
+  weather: "{{states(forecast)}}"
+  moon: !input moon
+  moon_phase: "{{states(moon)}}"
+  # Parse Icons
+  icon_clear_night: !input icon_clear_night
+  icon_cloudy: !input icon_cloudy
+  icon_exceptional: !input icon_exceptional
+  icon_fog: !input icon_fog
+  icon_hail: !input icon_hail
+  icon_lightning: !input icon_lightning
+  icon_lightning_rainy: !input icon_lightning_rainy
+  icon_partlycloudy: !input icon_partlycloudy
+  icon_pouring: !input icon_pouring
+  icon_rainy: !input icon_rainy
+  icon_snowy: !input icon_snowy
+  icon_snowy_rainy: !input icon_snowy_rainy
+  icon_sunny: !input icon_sunny
+  icon_windy: !input icon_windy
+  icon_windy_variant: !input icon_windy_variant
+  clear_night_dict: >-
+    {{ dict({
+      'full_moon': '2314',
+      'waning_gibbous': '2315',
+      'last_quarter': '2316',
+      'waning_crescent': '2317',
+      'new_moon': '2318',
+      'waxing_crescent': '2319',
+      'first_quarter': '2320',
+      'waxing_gibbous': '2321'}) }}
+  color_matrix_json: !input color_matrix_json
+  color_dict: >-
+    {% set b = color_matrix_json | from_json %}    
+    {%- set ns = namespace(tuples=[]) %}
+    {%- for k,v in b | items -%}
+      {%- set key = k|float -%}
+      {%- set ns.tuples = ns.tuples + [(key,v)] %}      
+    {% endfor %}
+    {{ dict.from_keys(ns.tuples) }}
+
+  icon_dict: >-
+    {{ dict({'clear-night': icon_clear_night,
+    'cloudy': icon_cloudy,
+    'exceptional': icon_exceptional,
+    'fog': icon_fog,
+    'hail': icon_hail,
+    'lightning': icon_lightning,
+    'lightning-rainy': icon_lightning_rainy,
+    'partlycloudy': icon_partlycloudy,
+    'pouring': icon_pouring,
+    'rainy': icon_rainy,
+    'snowy': icon_snowy,
+    'snowy-rainy': icon_snowy_rainy,
+    'sunny': icon_sunny,
+    'windy': icon_windy, 
+    'windy-variant': icon_windy_variant})}}
+
+  icon: >
+    {{ icon_dict[weather] }}
+  payload: >
+    {%- macro interpolate(dictionary, x) -%}
+      {%- set sorted_keys = dictionary|dictsort -%}
+      {%- set above = sorted_keys|selectattr('0', 'gt', x)|map(attribute='0')|list|first -%}
+      {%- set below = sorted_keys|selectattr('0', 'lt', x)|map(attribute='0')|list|last -%}
+
+      {#- Key matches x exactly -#}
+      {%- if above is defined and dictionary[above] == x -%}
+        {%- set value = dictionary[above] -%}
+        {{ value }}
+      {%- elif below is defined and dictionary[below] == x -%}
+        {%- set value = dictionary[below] -%}
+        {{ value }}
+      {#- Interpolation between two values -#}
+      {%- elif below is defined and above is defined -%}
+        {%- set lower_value = dictionary[below] -%}
+        {%- set upper_value = dictionary[above] -%}
+        {%- set lower_rgb = lower_value[1:] -%}
+        {%- set upper_rgb = upper_value[1:] -%}
+
+        {%- set lower_r = lower_rgb[0:2]|int(base=16) -%}
+        {%- set lower_g = lower_rgb[2:4]|int(base=16) -%}
+        {%- set lower_b = lower_rgb[4:6]|int(base=16) -%}
+
+        {%- set upper_r = upper_rgb[0:2]|int(base=16) -%}
+        {%- set upper_g = upper_rgb[2:4]|int(base=16) -%}
+        {%- set upper_b = upper_rgb[4:6]|int(base=16) -%}
+
+        {%- set interpolation_factor = (x - below) / (above - below) -%}
+        {%- set interpolated_r = ((1 - interpolation_factor) * lower_r + interpolation_factor * upper_r)|int -%}
+        {%- set interpolated_g = ((1 - interpolation_factor) * lower_g + interpolation_factor * upper_g)|int -%}
+        {%- set interpolated_b = ((1 - interpolation_factor) * lower_b + interpolation_factor * upper_b)|int -%}
+
+        {%- set interpolated_hex = '#' ~ '%02X' % interpolated_r ~ '%02X' % interpolated_g ~ '%02X' % interpolated_b -%}
+        {{ interpolated_hex }}
+      {#- Only below key available -#}
+      {%- elif below is defined -%}
+        {%- set value = dictionary[below] -%}
+        {{ value }}
+      {#- Only above key available -#}
+      {%- elif above is defined -%}
+        {%- set value = dictionary[above] -%}
+        {{ value }}
+      {#- No matching keys available -#}
+      {%- else -%}
+        No matching key found.
+      {%- endif -%}
+    {%- endmacro -%}
+
+    {# Define the color mapping dictionary #}
+    {% set forecast=states.weather.weatherflow_hourly_based_forecast.attributes.forecast %}
+
+    { "text": [
+      {"t":"{{ states('sensor.weatherflow_air_temperature')}}°",
+      "c":"{{interpolate(color_dict, states('sensor.weatherflow_air_temperature') | float)}}"}
+      ],
+    "draw": [
+       {"dp": [9 ,7,"{{interpolate(color_dict, forecast[0].feels_like) }}"]},
+        {"dp": [10,7,"{{interpolate(color_dict, forecast[1].feels_like) }}"]},
+        {"dp": [11,7,"{{interpolate(color_dict, forecast[2].feels_like) }}"]},
+        {"dp": [12,7,"{{interpolate(color_dict, forecast[3].feels_like) }}"]},
+        {"dp": [13,7,"{{interpolate(color_dict, forecast[4].feels_like) }}"]},
+        {"dp": [14,7,"{{interpolate(color_dict, forecast[5].feels_like) }}"]},
+        {"dp": [15,7,"{{interpolate(color_dict, forecast[6].feels_like) }}"]},
+        {"dp": [16,7,"{{interpolate(color_dict, forecast[7].feels_like) }}"]},
+        {"dp": [17,7,"{{interpolate(color_dict, forecast[8].feels_like) }}"]},
+        {"dp": [18,7,"{{interpolate(color_dict, forecast[9].feels_like) }}"]},
+        {"dp": [19,7,"{{interpolate(color_dict, forecast[10].feels_like) }}"]},
+        {"dp": [20,7,"{{interpolate(color_dict, forecast[11].feels_like) }}"]},
+        {"dp": [21,7,"{{interpolate(color_dict, forecast[12].feels_like) }}"]},
+        {"dp": [22,7,"{{interpolate(color_dict, forecast[13].feels_like) }}"]},
+        {"dp": [23,7,"{{interpolate(color_dict, forecast[14].feels_like) }}"]},
+        {"dp": [24,7,"{{interpolate(color_dict, forecast[15].feels_like) }}"]},
+        {"dp": [25,7,"{{interpolate(color_dict, forecast[16].feels_like) }}"]},
+        {"dp": [26,7,"{{interpolate(color_dict, forecast[17].feels_like) }}"]},
+        {"dp": [27,7,"{{interpolate(color_dict, forecast[18].feels_like) }}"]}
+    ],
+    "icon": "{{icon}}",
+    "duration": 30,
+    "pushIcon": 2,
+    "lifetime": 120
+    }
+  # payload: >
+  #   {% set payload = namespace(list[]) %}
+
+  #   "{{dict({'clear-night': icon-clear-night,
+  #   'cloudy': icon-cloudy,
+  #   'exceptional': icon-exceptional,
+  #   'fog': icon-fog,
+  #   'hail': icon-hail,
+  #   'lightning': icon-lightning,
+  #   'lightning-rainy': icon-lightning-rainy,
+  #   'partlycloudy': icon-partlycloudy,
+  #   'pouring': icon-pouring,
+  #   'rainy': icon-rainy,
+  #   'snowy': icon-snowy,
+  #   'snowy-rainy': icon-snowy-rainy,
+  #   'sunny': icon-sunny,
+  #   'windy': icon-windy, 'windy-variant': icon-windy-variant})}}"
+
+trigger:
+  - platform: time_pattern
+    seconds: /5
+  - platform: state
+    entity_id: !input forecast
+    id: Changes
+    enabled: true
+
+condition: []
+action:
+  - service: mqtt.publish
+    data:
+      qos: 0
+      topic: "{{message_topic}}"
+      payload: >
+        {{payload}}
+
+      # payload: >-
+      # {"icon":"{{ states[battery_sensor].attributes.icon
+      # | replace('mdi:','')
+      # | replace('90','80')
+      # | replace('70','60')
+      # | replace('50','40')
+      # | replace('30','20')}}",
+      # "text":"{{message_text}}",
+      # "pushIcon":{{push_icon}},
+      # "progress":"{{states[battery_sensor].state}}","pushIcon":1}
