@@ -1,0 +1,100 @@
+---
+blueprint:
+  name: AWTRIX UV☀️ Humidity💧️
+  description: >
+    Display both a humidity value and the UV index on the awtrix.
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: false
+    hum:
+      name: Humidity Sensor
+      description: A sesnor that provides a humidity value
+      selector:
+        entity:
+    uv:
+      name: UV Index
+      description: A sesnor that provides a uv index
+      selector:
+        entity:
+
+mode: restart
+variables:
+  device_id: !input awtrix
+  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
+  message_topic: "{{awtrix ~ '/custom/hum'}}"
+  notification_topic: "{{awtrix ~ '/notify' }}"
+  payload: >-
+    {% set uv = states('sensor.weatherflow_uv_index') | round %} 
+    {% set hum = states('sensor.weatherflow_relative_humidity') %}
+
+
+    {%- if uv|float >= 10-%}
+      {%- set uv_offset = "23,2" -%}
+    {%- else %}
+      {%- set uv_offset = "23,2" -%}      
+    {%- endif %} 
+
+
+    {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
+    #582FBD
+    {%- elif index | float >= 8 -%}
+    #CD0010
+    {%- elif index | float >= 6 -%}
+    #F44208
+    {%- elif index | float >= 3 -%}
+    #F5E10A
+    {%- else -%}
+    #248703
+    {%- endif -%}
+    {%- endmacro -%}
+
+    {% set uv_color = get_uv_color(uv) %}
+
+    {% macro draw_uv() %}
+    {"dt":[{{uv_offset}},"{{uv}}","{{uv_color}}"]}
+    {% endmacro %}
+
+    {%- macro draw_u(x,y,color) -%}
+    {"dl":[{{x}},{{y}},{{x}},{{y+2}},"{{color}}"]},
+    {"dl":[{{x}},{{y+2}},{{x+2}},{{y+2}},"{{color}}"]},
+    {"dl":[{{x+2}},{{y}},{{x+2}},{{y+2}},"{{color}}"]}
+    {%- endmacro -%}
+
+    {%- macro draw_v(x,y,color) -%}
+    {"dl":[{{x}},{{y}},{{x+1}},{{y+2}},"{{color}}"]},
+    {"dl":[{{x+2}},{{y}},{{x+1}},{{y+2}},"{{color}}"]}
+    {%- endmacro -%}
+
+
+
+    {
+      "draw": [
+        {"db":[0,1,8,8,[0,0,61279,0,0,0,0,0,0,65535,59199,50751,0,0,0,0,65535,61279,59199,50751,44383,0,0,0,61279,59199,59199,44383,44383,0,0,0,61279,50751,50751,44383,31737,0,0,0,0,44383,44383,31737,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]},
+        {"dt":[6,2,"{{hum}}%"]},
+        {{draw_u(19,1,"#00ffaa")}},
+        {{draw_v(19,5,"#00ffaa")}},
+        
+        {{draw_uv()}}
+      ]
+    }
+
+trigger:
+  - platform: time_pattern
+    seconds: /5
+
+condition: []
+action:
+  - service: mqtt.publish
+    data:
+      qos: 0
+      topic: "{{message_topic}}"
+      payload: >
+        {{payload}}
