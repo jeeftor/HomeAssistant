@@ -33,7 +33,7 @@ blueprint:
       description: >
         Here you can enter a temperature to color mapping. 
 
-        > Please note the format is *NOT JSON*, but rather it is Python dictionary format
+        > Please note the format is *JSON*,
                 
 
         Some possible mappings are:
@@ -41,15 +41,16 @@ blueprint:
         #### USA: Farenheit 0-100 (Based on NOAA scale from 0-100)
 
 
-            {0: '#FEC4FF',10: '#D977DF',20: '#9545BC',30: '#4B379C',40: '#31B8DB',50: '#31DB8B',60: '#6ED228',70: '#FFFF28',80: '#F87E27',90: '#CF3927',100: '#A12527'}
+            {"0": "#FEC4FF","10": "#D977DF","20": "#9545BC","30": "#4B379C","40": "#31B8DB","50": "#31DB8B","60": "#6ED228","70": "#FFFF28","80": "#F87E27","90": "#CF3927","100": "#A12527"}
 
 
         #### EURO: -12°c to  -38°c based on USA NOAA Colors 
 
-            {-12: "#D977DF",-6: "#9545BC",-1: "#4B379C",0: "#FEC4FF",4: "#31B8DB",10: "#31DB8B",15: "#6ED228",21: "#FFFF28",27: "#F87E27",32: "#CF3927",38: "#A12527"}
+            {"-12": "#D977DF","-6": "#9545BC","-1": "#4B379C","0": "#FEC4FF","4": "#31B8DB","10": "#31DB8B","15": "#6ED228","21": "#FFFF28","27": "#F87E27","32": "#CF3927","38": "#A12527"}
 
       selector:
         text:
+          multiline: true
       default:
         {
           "0": "#FEC4FF",
@@ -64,7 +65,6 @@ blueprint:
           "90": "#CF3927",
           "100": "#A12527",
         }
-
     moon:
       name: Moon Sensor
       description: >
