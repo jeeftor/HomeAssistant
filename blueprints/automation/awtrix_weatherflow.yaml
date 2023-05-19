@@ -1,6 +1,6 @@
 ---
 blueprint:
-  name: AWTRIX Weather
+  name: AWTRIX Weather ⛈️
   description: >
     This blueprint will print out the battery status of a device available to home assistant.
     It uses a custom icon set you need to install.
@@ -19,15 +19,36 @@ blueprint:
           model: AWTRIX Light
           multiple: false
 
-    forecast:
-      name: Daily Forecast
+    forecast_var:
+      name: Hourly Forecast
       description: >
-        The HACS tempest weatherflow integration provides both an hourly and a daily forecast. Make sure to select the daily forceast if you want a high/low temp range
+        The HACS tempest weatherflow integration provides both an hourly and a daily forecast. If you are using a different weather provider - make sure they provide an hourly forecast as well. (I believe `OpenWeather` provides such a forecast)
+
+        I guess you could run this with a daily forecast if you so wanted as well...
       selector:
         entity:
           domain:
             - weather
           multiple: false
+
+    forecast_temp_field:
+      name: Temperature Attributes
+      description: This is the field name of the temperature reading. For example in weather flow I use the `feels_like` field. It appears in open weather you would want to use the `temperature` field
+      selector:
+        text:
+      default: "feels_like"
+
+    current_temp_var:
+      name: The current outside temperature
+      description: >
+        This is the actual current outside temperature value. Most weather providers should provide a sensor such as the: `sensor.openweathermap_feels_like_temperature`
+      selector:
+        entity:
+          domain:
+            - sensor
+          multiple: false
+      default: sensor.weatherflow_air_temperature
+
     color_matrix_json:
       name: Color Matrix
       description: >
@@ -236,8 +257,14 @@ variables:
     # message_topic: "{{awtrix ~ '/custom/' ~ app }}"
   notification_topic: "{{awtrix ~ '/notify' }}"
 
-  forecast: !input forecast
-  weather: "{{states(forecast)}}"
+  forecast_var: !input forecast_var
+  forecast: "{{state_attr(forecast_var,'forecast')}}"
+
+  current_temp_var: !input current_temp_var
+  current_temp: "{{states(current_temp_var)}}"
+  forecast_temp_field: !input forecast_temp_field
+
+  weather: "{{states(forecast_var)}}"
   moon: !input moon
   moon_phase: "{{states(moon)}}"
   # Parse Icons
@@ -345,32 +372,31 @@ variables:
     {%- endmacro -%}
 
     {# Define the color mapping dictionary #}
-    {% set forecast=states.weather.weatherflow_hourly_based_forecast.attributes.forecast %}
 
     { "text": [
       {"t":"{{ states('sensor.weatherflow_air_temperature')}}°",
       "c":"{{interpolate(color_dict, states('sensor.weatherflow_air_temperature') | float)}}"}
       ],
     "draw": [
-       {"dp": [9 ,7,"{{interpolate(color_dict, forecast[0].feels_like) }}"]},
-        {"dp": [10,7,"{{interpolate(color_dict, forecast[1].feels_like) }}"]},
-        {"dp": [11,7,"{{interpolate(color_dict, forecast[2].feels_like) }}"]},
-        {"dp": [12,7,"{{interpolate(color_dict, forecast[3].feels_like) }}"]},
-        {"dp": [13,7,"{{interpolate(color_dict, forecast[4].feels_like) }}"]},
-        {"dp": [14,7,"{{interpolate(color_dict, forecast[5].feels_like) }}"]},
-        {"dp": [15,7,"{{interpolate(color_dict, forecast[6].feels_like) }}"]},
-        {"dp": [16,7,"{{interpolate(color_dict, forecast[7].feels_like) }}"]},
-        {"dp": [17,7,"{{interpolate(color_dict, forecast[8].feels_like) }}"]},
-        {"dp": [18,7,"{{interpolate(color_dict, forecast[9].feels_like) }}"]},
-        {"dp": [19,7,"{{interpolate(color_dict, forecast[10].feels_like) }}"]},
-        {"dp": [20,7,"{{interpolate(color_dict, forecast[11].feels_like) }}"]},
-        {"dp": [21,7,"{{interpolate(color_dict, forecast[12].feels_like) }}"]},
-        {"dp": [22,7,"{{interpolate(color_dict, forecast[13].feels_like) }}"]},
-        {"dp": [23,7,"{{interpolate(color_dict, forecast[14].feels_like) }}"]},
-        {"dp": [24,7,"{{interpolate(color_dict, forecast[15].feels_like) }}"]},
-        {"dp": [25,7,"{{interpolate(color_dict, forecast[16].feels_like) }}"]},
-        {"dp": [26,7,"{{interpolate(color_dict, forecast[17].feels_like) }}"]},
-        {"dp": [27,7,"{{interpolate(color_dict, forecast[18].feels_like) }}"]}
+       {"dp": [9 ,7,"{{interpolate(color_dict, forecast[0][forecast_temp_field]) }}"]},
+        {"dp": [10,7,"{{interpolate(color_dict, forecast[1][forecast_temp_field]) }}"]},
+        {"dp": [11,7,"{{interpolate(color_dict, forecast[2][forecast_temp_field]) }}"]},
+        {"dp": [12,7,"{{interpolate(color_dict, forecast[3][forecast_temp_field]) }}"]},
+        {"dp": [13,7,"{{interpolate(color_dict, forecast[4][forecast_temp_field]) }}"]},
+        {"dp": [14,7,"{{interpolate(color_dict, forecast[5][forecast_temp_field]) }}"]},
+        {"dp": [15,7,"{{interpolate(color_dict, forecast[6][forecast_temp_field]) }}"]},
+        {"dp": [16,7,"{{interpolate(color_dict, forecast[7][forecast_temp_field]) }}"]},
+        {"dp": [17,7,"{{interpolate(color_dict, forecast[8][forecast_temp_field]) }}"]},
+        {"dp": [18,7,"{{interpolate(color_dict, forecast[9][forecast_temp_field]) }}"]},
+        {"dp": [19,7,"{{interpolate(color_dict, forecast[10][forecast_temp_field]) }}"]},
+        {"dp": [20,7,"{{interpolate(color_dict, forecast[11][forecast_temp_field]) }}"]},
+        {"dp": [21,7,"{{interpolate(color_dict, forecast[12][forecast_temp_field]) }}"]},
+        {"dp": [22,7,"{{interpolate(color_dict, forecast[13][forecast_temp_field]) }}"]},
+        {"dp": [23,7,"{{interpolate(color_dict, forecast[14][forecast_temp_field]) }}"]},
+        {"dp": [24,7,"{{interpolate(color_dict, forecast[15][forecast_temp_field]) }}"]},
+        {"dp": [25,7,"{{interpolate(color_dict, forecast[16][forecast_temp_field]) }}"]},
+        {"dp": [26,7,"{{interpolate(color_dict, forecast[17][forecast_temp_field]) }}"]},
+        {"dp": [27,7,"{{interpolate(color_dict, forecast[18][forecast_temp_field]) }}"]}
     ],
     "icon": "{{icon}}",
     "duration": 30,
@@ -399,7 +425,7 @@ trigger:
   - platform: time_pattern
     seconds: /5
   - platform: state
-    entity_id: !input forecast
+    entity_id: !input forecast_var
     id: Changes
     enabled: true
 
