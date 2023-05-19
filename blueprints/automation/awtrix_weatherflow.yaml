@@ -321,7 +321,12 @@ variables:
     'windy-variant': icon_windy_variant})}}
 
   icon: >
-    {{ icon_dict[weather] }}
+    {%- if weather == 'clear_night' %}
+      {{clear_night_dict[moon_phase]}}
+    {%- else %}
+      {{ icon_dict[weather] }}
+    {%- endif %}
+
   payload: >
     {%- macro interpolate(dictionary, x) -%}
       {%- set sorted_keys = dictionary|dictsort -%}
