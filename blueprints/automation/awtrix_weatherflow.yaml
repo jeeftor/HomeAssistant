@@ -371,32 +371,34 @@ variables:
       {%- endif -%}
     {%- endmacro -%}
 
+    {#- Define macro to get length of the forecast}
+    {%- macro str_len(str) %}
+    {%- if '.' in str %}
+    {%- set char_count = (str | length) -1 %}{{char_count * 3 + 1 + char_count}}
+    {%- else %}
+    {%- set char_count = (str | length) %}{{char_count * 3 + (char_count - 1)}}    
+    {%- endif %}
+    {%- endmacro %}
+
+    {#- Define a macro to draw out the forecast lines#}
+    {%- macro draw_forecast_lines(x,hours,height) %}
+      {%- for hour in range(hours) %}
+        {%- if height == 0 %}
+          {"dp": [{{x+hour}},7,"{{interpolate(color_dict, forecast[hour][forecast_temp_field]) }}"]}
+        {%- else %}
+          {"dl": [{{x+hour}},7,{{x+hour}},{{7 - height}},"{{interpolate(color_dict, forecast[hour][forecast_temp_field]) }}"]}
+        {%- endif %}
+        {%- if hour+1 != hours %},{%endif%}
+      {%- endfor %}
+    {%- endmacro %}
     {# Define the color mapping dictionary #}
 
     { "text": [
-      {"t":"{{ states('sensor.weatherflow_air_temperature')}}°",
-      "c":"{{interpolate(color_dict, states('sensor.weatherflow_air_temperature') | float)}}"}
+      {"t":"{{ current_temp}}°",
+      "c":"{{interpolate(color_dict, current_temp | float)}}"}
       ],
     "draw": [
-       {"dp": [9 ,7,"{{interpolate(color_dict, forecast[0][forecast_temp_field]) }}"]},
-        {"dp": [10,7,"{{interpolate(color_dict, forecast[1][forecast_temp_field]) }}"]},
-        {"dp": [11,7,"{{interpolate(color_dict, forecast[2][forecast_temp_field]) }}"]},
-        {"dp": [12,7,"{{interpolate(color_dict, forecast[3][forecast_temp_field]) }}"]},
-        {"dp": [13,7,"{{interpolate(color_dict, forecast[4][forecast_temp_field]) }}"]},
-        {"dp": [14,7,"{{interpolate(color_dict, forecast[5][forecast_temp_field]) }}"]},
-        {"dp": [15,7,"{{interpolate(color_dict, forecast[6][forecast_temp_field]) }}"]},
-        {"dp": [16,7,"{{interpolate(color_dict, forecast[7][forecast_temp_field]) }}"]},
-        {"dp": [17,7,"{{interpolate(color_dict, forecast[8][forecast_temp_field]) }}"]},
-        {"dp": [18,7,"{{interpolate(color_dict, forecast[9][forecast_temp_field]) }}"]},
-        {"dp": [19,7,"{{interpolate(color_dict, forecast[10][forecast_temp_field]) }}"]},
-        {"dp": [20,7,"{{interpolate(color_dict, forecast[11][forecast_temp_field]) }}"]},
-        {"dp": [21,7,"{{interpolate(color_dict, forecast[12][forecast_temp_field]) }}"]},
-        {"dp": [22,7,"{{interpolate(color_dict, forecast[13][forecast_temp_field]) }}"]},
-        {"dp": [23,7,"{{interpolate(color_dict, forecast[14][forecast_temp_field]) }}"]},
-        {"dp": [24,7,"{{interpolate(color_dict, forecast[15][forecast_temp_field]) }}"]},
-        {"dp": [25,7,"{{interpolate(color_dict, forecast[16][forecast_temp_field]) }}"]},
-        {"dp": [26,7,"{{interpolate(color_dict, forecast[17][forecast_temp_field]) }}"]},
-        {"dp": [27,7,"{{interpolate(color_dict, forecast[18][forecast_temp_field]) }}"]}
+      {{draw_forecast_lines(8,24,0)}}
     ],
     "icon": "{{icon}}",
     "duration": 30,
