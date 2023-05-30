@@ -1,16 +1,13 @@
 ---
 blueprint:
-  name: AWTRIX Weather ⛈️
+  name: AWTRIX Weather ⛈️ + Forecast + 🌕️
   description: >
-    This blueprint will print out the battery status of a device available to home assistant.
-    It uses a custom icon set you need to install.
-
-    For Clear night we support multiple moon phases
+    This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
 
   domain: automation
   input:
     awtrix:
-      name: AWTRIX Device
+      name: AWTRIX Device(s)
       description: Select the Awtrix light
       selector:
         device:
@@ -22,18 +19,38 @@ blueprint:
     forecast_var:
       name: Hourly Forecast
       description: >
-        The HACS tempest weatherflow integration provides both an hourly and a daily forecast. If you are using a different weather provider - make sure they provide an hourly forecast as well. (I believe `OpenWeather` provides such a forecast)
+        Select a sensor that provides an Hourly forecast (not a daily one)
 
-        I guess you could run this with a daily forecast if you so wanted as well...
+        This integration has been tested with:
+
+          - HACS [Weatherflow](https://github.com/briis/hass-weatherflow) integration 
+          
+          - HomeAssistant [Openweather](https://www.home-assistant.io/integrations/openweathermap/)
       selector:
         entity:
           domain:
             - weather
           multiple: false
 
+    hours_to_show:
+      name: Forecast Hours to Show
+      description: >
+        How many hours of forecast do you wish to show along the bottom of the display
+      selector:
+        number:
+          max: 0
+          min: 24
+      default: 12
+
     forecast_temp_field:
       name: Temperature Attributes
-      description: This is the field name of the temperature reading. For example in weather flow I use the `feels_like` field. It appears in open weather you would want to use the `temperature` field
+      description: >
+        Once you've selected your hourly forecast you will need to identify which attributes in the forecast provides a temperature value. 
+
+          - If you are using [Weatherflow](https://github.com/briis/hass-weatherflow) you may be able to select from either `feels_like` or `temperature`
+
+          - In [Openweather](https://www.home-assistant.io/integrations/openweathermap/) you only have access to `temperature`
+
       selector:
         text:
       default: "feels_like"
@@ -41,7 +58,10 @@ blueprint:
     current_temp_var:
       name: The current outside temperature
       description: >
-        This is the actual current outside temperature value. Most weather providers should provide a sensor such as the: `sensor.openweathermap_feels_like_temperature`
+        Select a sensor either from a PWS or a forecast that provides the current outside temperature you wish to display:
+
+          -  `sensor.openweathermap_feels_like_temperature`
+
       selector:
         entity:
           domain:
@@ -52,6 +72,8 @@ blueprint:
     color_matrix_json:
       name: Color Matrix
       description: >
+        The `Color Matrix` will control colors map to temperature ranges on the display. The format of this map is **JSON** 
+
         Here you can enter a temperature to color mapping. 
 
         > Please note the format is *JSON*,
@@ -86,8 +108,12 @@ blueprint:
           "90": "#CF3927",
           "100": "#A12527",
         }
+
+    # -------------
+    # Moon Stuff
+    # -------------
     moon:
-      name: Moon Sensor
+      name: Moon Phase Sensor
       description: >
         To setup a moon sensor see here: https://www.home-assistant.io/integrations/moon/
       selector:
@@ -95,6 +121,31 @@ blueprint:
           multiple: false
           filter:
             integration: moon
+    moon_rise_set:
+      name: Moon Riese/Set Sensor
+      description: >
+        As Home Assistant doesn't provide moon rise/set times you will need to get this from some api. In my personal setup I use [ipgeolocation](https://app.ipgeolocation.io) as my api.
+
+        You can create a custom REST sensor as follows:
+
+        ```
+        sensor:
+        - platform: rest
+          resource: https://api.ipgeolocation.io/astronomy?lat=<LAT>&long=-<LON>&apiKey=<API_KEY>
+          name: ip_geo_location
+          scan_interval: 300
+          value_template: "OK"
+          json_attributes:
+            - moonrise
+            - moonset
+            - moon_altitude
+        ```
+
+      selector:
+        entity:
+          multiple: false
+          filter:
+            integration: rest
     #-----------------------------------------
     # This was really annoying to generate :)
     #-----------------------------------------
@@ -265,9 +316,16 @@ variables:
   forecast_temp_field: !input forecast_temp_field
 
   weather: "{{states(forecast_var)}}"
+  hours_to_show: !input hours_to_show
+
   moon: !input moon
   moon_phase: "{{states(moon)}}"
-  # Parse Icons
+  moon_times: !input moon_rise_set
+  moon_rise: "{{state_attr(moon_times,'moonrise')}}"
+  moon_set: "{{state_attr(moon_times,'moonset')}}"
+  moon_alt: "{{state_attr(moon_times,'moon_altitude')}}"
+  moon_risen: "{{moon_alt > 0}}"
+
   icon_clear_night: !input icon_clear_night
   icon_cloudy: !input icon_cloudy
   icon_exceptional: !input icon_exceptional
@@ -326,6 +384,120 @@ variables:
     {%- else %}
       {{ icon_dict[weather] }}
     {%- endif %}
+
+  moon_data: >
+    {%- macro hi(phase,x=22,y=0) %}
+      {%- if phase == 'full'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	54970,	54970,	54970,	54970,	0,	0,
+          0,	54970,	54970,	63390,	63390,	54970,	54970,	0,
+          54970,	54970,	63390,	63390,	46518,	46518,	54970,	54970,
+          54970,	63390,	46518,	63390,	46518,	63390,	63390,	54970,
+          54970,	63390,	46518,	63390,	63390,	63390,	63390,	54970,
+          54970,	54970,	63390,	63390,	63390,	46518,	54970,	54970,
+          0,	54970,	54970,	46518,	63390,	54970,	54970,	0,
+          0,	0,	54970,	54970,	54970,	54970,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'waning_gibbous'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	54970,	54970,	12710,	12710,	0,	0,
+          0,	54970,	54970,	63390,	63390,	12710,	12710,	0,
+          54970,	54970,	63390,	63390,	52857,	52857,	12710,	12710,
+          54970,	63390,	52857,	63390,	52857,	63390,	12710,	12710,
+          54970,	63390,	52857,	63390,	63390,	63390,	12710,	12710,
+          54970,	54970,	63390,	63390,	63390,	52857,	12710,	12710,
+          0,	54970,	54970,	52857,	63390,	12710,	12710,	0,
+          0,	0,	54970,	54970,	12710,	12710,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'last_quarter'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	54970,	54970,	12710,	12710,	0,	0,
+          0,	54970,	54970,	63390,	12710,	12710,	12710,	0,
+          54970,	54970,	63390,	63390,	6371,	6371,	12710,	12710,
+          54970,	63390,	52857,	63390,	6371,	12710,	12710,	12710,
+          54970,	63390,	52857,	63390,	12710,	12710,	12710,	12710,
+          54970,	54970,	63390,	63390,	12710,	6371,	12710,	12710,
+          0,	54970,	54970,	52857,	12710,	12710,	12710,	0,
+          0,	0,	54970,	54970,	12710,	12710,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'last_quarter'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	54970,	54970,	12710,	12710,	0,	0,
+          0,	54970,	54970,	63390,	12710,	12710,	12710,	0,
+          54970,	54970,	63390,	63390,	6371,	6371,	12710,	12710,
+          54970,	63390,	52857,	63390,	6371,	12710,	12710,	12710,
+          54970,	63390,	52857,	63390,	12710,	12710,	12710,	12710,
+          54970,	54970,	63390,	63390,	12710,	6371,	12710,	12710,
+          0,	54970,	54970,	52857,	12710,	12710,	12710,	0,
+          0,	0,	54970,	54970,	12710,	12710,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'waning_crescent'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	54970,	54970,	10565,	10565,	0,	0,
+          0,	54970,	54970,	10565,	10565,	10565,	10565,	0,
+          54970,	54970,	10565,	10565,	6371,	6371,	10565,	10565,
+          54970,	63390,	6371,	10565,	6371,	10565,	10565,	10565,
+          54970,	63390,	6371,	10565,	10565,	10565,	10565,	10565,
+          54970,	54970,	10565,	10565,	10565,	6371,	10565,	10565,
+          0,	54970,	54970,	6371,	10565,	10565,	10565,	0,
+          0,	0,	54970,	54970,	10565,	10565,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'new'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	10565,	10565,	10565,	10565,	0,	0,
+          0,	10565,	10565,	10565,	10565,	10565,	10565,	0,
+          10565,	10565,	10565,	10565,	6371,	6371,	10565,	10565,
+          10565,	10565,	6371,	10565,	6371,	10565,	10565,	10565,
+          10565,	10565,	6371,	10565,	10565,	10565,	10565,	10565,
+          10565,	10565,	10565,	10565,	10565,	6371,	10565,	10565,
+          0,	10565,	10565,	6371,	10565,	10565,	10565,	0,
+          0,	0,	10565,	10565,	10565,	10565,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'waxing_crescent'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	12678,	12678,	54970,	54970,	0,	0,
+          0,	12678,	12678,	12678,	12678,	54970,	54970,	0,
+          12678,	12678,	12678,	12678,	6339,	6339,	54970,	54970,
+          12678,	12678,	6339,	12678,	6339,	12678,	63390,	54970,
+          12678,	12678,	6339,	12678,	12678,	12678,	63390,	54970,
+          12678,	12678,	12678,	12678,	12678,	6339,	54970,	54970,
+          0,	12678,	12678,	12678,	12678,	54970,	54970,	0,
+          0,	0,	12678,	12678,	54970,	54970,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'first_quarter'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	12678,	12678,	54970,	54970,	0,	0,
+          0,	12678,	12678,	12678,	63390,	54970,	54970,	0,
+          12678,	12678,	12678,	12678,	52825,	52825,	54970,	54970,
+          12678,	12678,	6339,	12678,	52825,	63390,	63390,	54970,
+          12678,	12678,	6339,	12678,	63390,	63390,	63390,	54970,
+          12678,	12678,	12678,	12678,	63390,	52825,	54970,	54970,
+          0,	12678,	12678,	12678,	63390,	54970,	54970,	0,
+          0,	0,	12678,	12678,	54970,	54970,	0,	0
+          ]]}
+        {%- endif  %}
+        {%- if phase == 'waxing_gibbous'  %}
+          {"db":[{{x}},{{y}},8,8,[
+          0,	0,	12678,	12678,	54970,	54970,	0,	0,
+          0,	12678,	12678,	54970,	63390,	54970,	54970,	0,
+          12678,	12678,	63390,	63390,	50712,	50712,	54970,	54970,
+          12678,	12678,	50712,	63390,	50712,	63390,	63390,	54970,
+          12678,	12678,	50712,	63390,	63390,	63390,	63390,	54970,
+          12678,	12678,	63390,	63390,	63390,	50712,	54970,	54970,
+          0,	12678,	12678,	50712,	63390,	54970,	54970,	0,
+          0,	0,	12678,	12678,	54970,	54970,	0,	0
+          ]]}
+        {%- endif  %}
+
+    {% endmacro %}
+    {{hi(moon_phase,22,0)}}
 
   payload: >
     {%- macro interpolate(dictionary, x) -%}
@@ -403,30 +575,14 @@ variables:
       "c":"{{interpolate(color_dict, current_temp | float)}}"}
       ],
     "draw": [
-      {{draw_forecast_lines(8,24,0)}}
+      {{draw_forecast_lines(8,24,0)}}{% if moon_risen %}, {{moon_data}} {% endif %}
     ],
     "icon": "{{icon}}",
     "duration": 30,
     "pushIcon": 2,
-    "lifetime": 120
+    "lifetime": 120,
+    "weather": "{{weather}}"
     }
-  # payload: >
-  #   {% set payload = namespace(list[]) %}
-
-  #   "{{dict({'clear-night': icon-clear-night,
-  #   'cloudy': icon-cloudy,
-  #   'exceptional': icon-exceptional,
-  #   'fog': icon-fog,
-  #   'hail': icon-hail,
-  #   'lightning': icon-lightning,
-  #   'lightning-rainy': icon-lightning-rainy,
-  #   'partlycloudy': icon-partlycloudy,
-  #   'pouring': icon-pouring,
-  #   'rainy': icon-rainy,
-  #   'snowy': icon-snowy,
-  #   'snowy-rainy': icon-snowy-rainy,
-  #   'sunny': icon-sunny,
-  #   'windy': icon-windy, 'windy-variant': icon-windy-variant})}}"
 
 trigger:
   - platform: time_pattern
@@ -444,14 +600,3 @@ action:
       topic: "{{message_topic}}"
       payload: >
         {{payload}}
-
-      # payload: >-
-      # {"icon":"{{ states[battery_sensor].attributes.icon
-      # | replace('mdi:','')
-      # | replace('90','80')
-      # | replace('70','60')
-      # | replace('50','40')
-      # | replace('30','20')}}",
-      # "text":"{{message_text}}",
-      # "pushIcon":{{push_icon}},
-      # "progress":"{{states[battery_sensor].state}}","pushIcon":1}
