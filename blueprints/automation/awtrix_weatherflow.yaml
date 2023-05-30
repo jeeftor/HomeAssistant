@@ -4,6 +4,12 @@ blueprint:
   description: >
     This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
 
+
+    The simple way to get the icons is through the flow page: [https://flows.blueforcer.de/flow/6RpwLAMGOlZ4](https://flows.blueforcer.de/flow/6RpwLAMGOlZ4) and click the *Upload assets to Awtrix Light*
+
+
+    _This blueprint will be updated as new features_
+
   domain: automation
   input:
     awtrix:
@@ -152,160 +158,172 @@ blueprint:
     icon_clear_night:
       name: Icon for clear-night
       description: >
-        This is the icon ID which maps to the weather state: `clear-night`. 
 
-        By default this value is not set.
-        If its unset instead the blueprint will use the following icons to show a "moon phase". If you don't want this functionality please enter a value here
+        The default clear_night icon is: 
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2314_icon_thumb.png?v=1) `2314` - `full_moon`
+          ![](https://developer.lametric.com/content/apps/icon_thumbs/53383_icon_thumb.gif?v=2) - `53383`
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2315_icon_thumb.png?v=1) `2315` - `waning_gibbous`
+        However - if the moon is actually visible it will replace this icon with the icon for the correct moon phase. 
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2316_icon_thumb.png?v=1) `2316` - `last_quarter`
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2314_icon_thumb.png?v=1) - `full_moon`
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2317_icon_thumb.png?v=1) `2317` - `waning_crescent`
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2315_icon_thumb.png?v=1) - `waning_gibbous`
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2318_icon_thumb.png?v=1) `2318` - `new_moon`
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2316_icon_thumb.png?v=1) - `last_quarter`
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2319_icon_thumb.png?v=1) `2319` - `waxing_crescent`
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2317_icon_thumb.png?v=1) - `waning_crescent`
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2320_icon_thumb.png?v=1) `2320` - `first_quarter`
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2318_icon_thumb.png?v=1) - `new_moon`
 
-        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2321_icon_thumb.png?v=1) `2321` - `waxing_gibbous`
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2319_icon_thumb.png?v=1) - `waxing_crescent`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2320_icon_thumb.png?v=1) - `first_quarter`
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/2321_icon_thumb.png?v=1) - `waxing_gibbous`
+
+        If you wish to use a different icon please enter its text in the box to the right
 
       selector:
         text:
-      default: ""
+      default: "w-clear-night"
     icon_cloudy:
       name: Icon for cloudy
       description: >
         This is the icon ID which maps to the weather state: `cloudy`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/2283_icon_thumb.gif?v=1) `2283`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53384_icon_thumb.gif?v=1)
       selector:
         text:
-      default: "2283"
+      default: "w-cloudy"
     icon_exceptional:
       name: Icon for exceptional
       description: >
         This is the icon ID which maps to the weather state: `exceptional`
 
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/23683_icon_thumb.gif?v=1) `23683`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/36637_icon_thumb.gif?v=1)
       selector:
         text:
-      default: "23683"
+      default: "w-exceptional"
     icon_fog:
       name: Icon for fog
       description: >
         This is the icon ID which maps to the weather state: `fog`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/17055_icon_thumb.gif?v=1) `17055`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/17055_icon_thumb.gif?v=1)
       selector:
         text:
-      default: "17055"
+      default: "w-fog"
     icon_hail:
       name: Icon for hail
       description: >
-        This is the icon ID which maps to the weather state: `hail`
+        This is the icon ID which maps to the weather state: `hail` (IF YOU HAVE A BETTER ONE PLEASE LET ME KNOW)
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53385_icon_thumb.gif?v=1)
+
       selector:
         text:
-      default: "xxxxx"
+      default: "w-hail"
     icon_lightning:
       name: Icon for lightning
       description: >
         This is the icon ID which maps to the weather state: `lightning`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/29839_icon_thumb.gif?v=1) `29839`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/29839_icon_thumb.gif?v=1)
 
       selector:
         text:
-      default: "29839"
+      default: "w-lightning"
     icon_lightning_rainy:
       name: Icon for lightning-rainy
       description: >
         This is the icon ID which maps to the weather state: `lightning-rainy`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/49299_icon_thumb.gif?v=4) `49299`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/49299_icon_thumb.gif?v=4)
       selector:
         text:
-      default: "49299"
+      default: "w-lightning-rainy"
     icon_partlycloudy:
       name: Icon for partlycloudy
       description: >
         This is the icon ID which maps to the weather state: `partlycloudy`
          
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/2286_icon_thumb.gif?v=1) `2282`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/2286_icon_thumb.gif?v=1)
 
       selector:
         text:
-      default: "2282"
+      default: "w-partlycloudy"
     icon_pouring:
       name: Icon for pouring
       description: >
-        This is the icon ID which maps to the weather state: `pouring`
+        This is the default icon which maps to the weather state: `pouring`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/49300_icon_thumb.gif?v=1) `49300`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/49300_icon_thumb.gif?v=1)
 
       selector:
         text:
-      default: "49300"
+      default: "w-pouring"
     icon_rainy:
       name: Icon for rainy
       description: >
-        This is the icon ID which maps to the weather state: `rainy`
+        This is the default icon which maps to the weather state: `rainy`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/2720_icon_thumb.gif?v=1)
+
       selector:
         text:
-      default: "xxxxx"
+      default: "w-rainy"
     icon_snowy:
       name: Icon for snowy
       description: >
         This is the icon ID which maps to the weather state: `snowy`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/2289_icon_thumb.gif?v=1) `2289`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/2289_icon_thumb.gif?v=1)
       selector:
         text:
-      default: "2289"
+      default: "w-snowy"
     icon_snowy_rainy:
       name: Icon for snowy-rainy
       description: >
         This is the icon ID which maps to the weather state: `snowy-rainy`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/49301_icon_thumb.gif?v=2) `49301`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/49301_icon_thumb.gif?v=2)
       selector:
         text:
-      default: "49301"
+      default: "w-snowy-rainy"
     icon_sunny:
       name: Icon for sunny
       description: >
         This is the icon ID which maps to the weather state: `sunny`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/52156_icon_thumb.png?v=1) `52156`
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53386_icon_thumb.gif?v=1)
       selector:
         text:
-      default: "52156"
+      default: "w-sunny"
     icon_windy:
       name: Icon for windy
       description: >
         This is the icon ID which maps to the weather state: `windy`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/3363_icon_thumb.gif?v=1)
       selector:
         text:
-      default: "xxxxx"
+      default: "w-windy"
     icon_windy_variant:
       name: Icon for windy-variant
       description: >
         This is the icon ID which maps to the weather state: `windy-variant`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/3363_icon_thumb.gif?v=1)
       selector:
         text:
-      default: "xxxxx"
+      default: "w-windy-variant"
 
 mode: restart
 variables:
   device_id: !input awtrix
   awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
-  message_topic:
-    "{{awtrix ~ '/custom/dev'}}"
-    # message_topic: "{{awtrix ~ '/custom/' ~ app }}"
+  message_topic: "{{awtrix ~ '/custom/jeef_weather'}}"
   notification_topic: "{{awtrix ~ '/notify' }}"
 
   forecast_var: !input forecast_var
