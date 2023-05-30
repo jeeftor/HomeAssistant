@@ -61,6 +61,16 @@ blueprint:
         text:
       default: "feels_like"
 
+    temp_digits:
+      name: Temp Digits
+      description: >
+        By default we will round the temp to the nearest whole-number. If you want percisions you can change this to 1 or 2 in order to see more decimalm places.
+      selector:
+        number:
+          min: 0
+          max: 2
+      default: 0
+
     current_temp_var:
       name: The current outside temperature
       description: >
@@ -338,7 +348,8 @@ variables:
   forecast: "{{state_attr(forecast_var,'forecast')}}"
 
   current_temp_var: !input current_temp_var
-  current_temp: "{{states(current_temp_var)}}"
+  temp_digits: !input temp_digits
+  current_temp: "{{states(current_temp_var) | round(temp_digits) }}"
   forecast_temp_field: !input forecast_temp_field
 
   weather: "{{states(forecast_var)}}"
