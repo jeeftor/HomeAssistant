@@ -13,14 +13,14 @@ blueprint:
   domain: automation
   input:
     awtrix:
-      name: AWTRIX Device(s)
+      name: AWTRIX Device
       description: Select the Awtrix light
       selector:
         device:
           integration: mqtt
           manufacturer: Blueforcer
           model: AWTRIX Light
-          multiple: false
+          multiple: true
 
     forecast_var:
       name: Hourly Forecast
@@ -100,7 +100,7 @@ blueprint:
       selector:
         text:
           multiline: true
-      default:
+      default: >
         {
           "0": "#FEC4FF",
           "10": "#D977DF",
@@ -112,7 +112,7 @@ blueprint:
           "70": "#FFFF28",
           "80": "#F87E27",
           "90": "#CF3927",
-          "100": "#A12527",
+          "100": "#A12527"
         }
 
     # -------------
@@ -321,10 +321,18 @@ blueprint:
 
 mode: restart
 variables:
-  device_id: !input awtrix
-  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
-  message_topic: "{{awtrix ~ '/custom/jeef_weather'}}"
-  notification_topic: "{{awtrix ~ '/notify' }}"
+  device_ids: !input awtrix
+  devices_topics: >-
+    {%- macro get_device(device_id) %}
+    {{iif(device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name'))}}
+    {% endmacro -%}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/jeef_weather'] %}
+    {%- endfor %}
+    {{ ns.devices }}
 
   forecast_var: !input forecast_var
   forecast: "{{state_attr(forecast_var,'forecast')}}"
@@ -611,10 +619,15 @@ trigger:
     enabled: true
 
 condition: []
+
 action:
-  - service: mqtt.publish
-    data:
-      qos: 0
-      topic: "{{message_topic}}"
-      payload: >
-        {{payload}}
+  - repeat:
+      for_each: "{{ devices_topics }}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item }}"
+            payload: >
+              {{payload}}
