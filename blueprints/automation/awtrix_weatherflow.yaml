@@ -44,8 +44,10 @@ blueprint:
         How many hours of forecast do you wish to show along the bottom of the display
       selector:
         number:
-          max: 0
-          min: 24
+          max: 24
+          min: 0
+          unit_of_measurement: "hours"
+          mode: box
       default: 12
 
     forecast_temp_field:
@@ -69,6 +71,9 @@ blueprint:
         number:
           min: 0
           max: 2
+          step: 1
+          mode: box
+          unit_of_measurement: "Decimal places"
       default: 0
 
     current_temp_var:
@@ -612,7 +617,7 @@ variables:
       "c":"{{interpolate(color_dict, current_temp | float)}}"}
       ],
     "draw": [
-      {{draw_forecast_lines(8,24,0)}}{% if moon_risen %}, {{moon_data}} {% endif %}
+      {{draw_forecast_lines(8,hours_to_show,0)}}{% if moon_risen %}, {{moon_data}} {% endif %}
     ],
     "icon": "{{icon}}",
     "duration": 30,
