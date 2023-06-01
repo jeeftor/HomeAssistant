@@ -5,13 +5,15 @@ blueprint:
     This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
 
 
+    This blueprint will publish to two separate topics.  `jeef_weather` for the weather report and `jeef_weather_sun` if its near sunrise/set
+
     ## ⚠️ REQUIREMENTS ⚠️
 
     For this blueprint to work you MUST have a few things pre-setup. 
 
     ### Moon Integration 🌕️
 
-    The moon integration is required. You can add it via the [moon](https://www.home-assistant.io/integrations/moon/) page
+    The moon integration is required. You can add it via the [moon](https://www.home-assistant.io/integrations/moon/) page or just by [clicking here](https://my.home-assistant.io/redirect/config_flow_start?domain=moon)
 
     ### Moon Rise/Set Sensor 🌕️ ⏲️
 
@@ -206,14 +208,14 @@ blueprint:
     # Sunrise Sunset Times :)
     #----------------------------------------
     show_sun_rise_set:
-      name: Show Sunrise/Sunset
+      name: ☀️ Show Sunrise/Sunset
       description: >
         Prior to both sunrise and sunset times offer a message about pending sun transitional state.
 
-        _You can change the icons down below._
+        _You can change the icons for sun rise/set way down below._
       selector:
         boolean:
-      default: False
+      default: True
     sun_time_dif:
       name: Sun Time Prior 🕰️
       description: How many minutes before sun rise/set should the message be active
@@ -483,6 +485,9 @@ variables:
   sun_time_dif: !input sun_time_dif
   sun_time_type: !input sun_time_type
   sun_time_format: !input sun_time_format
+  icon_sunrise: !input icon_sunrise
+  icon_sunset: !input icon_sunset
+  show_sun_rise_set: !input show_sun_rise_set
 
   sun_next_event: >-
     {%- set rise = state_attr('sun.sun','next_rising') %}
@@ -507,12 +512,18 @@ variables:
     {%- else %}
       {{sun_min_until_next_event}} min
     {%- endif %}
-
+  sun_event_icon: >-
+    {{ iif(next_event == 'sunrise', icon_sunrise, icon_sunset) }}
   sun_event_payload: >-
 
-    {"icon":"w-{{sun_next_event}}", "text":"{{sun_next_str}}"}
+    {"icon":"{{sun_event_icon}}", "text":"{{sun_next_str}}"}
   sun_payload: >-
+    {%- if show_sun_rise_set %}
     {{ iif(sun_time_dif >= sun_min_until_next_event, sun_event_payload, "{}") }}
+    {%- else %}
+    {}
+    {%- endif %}
+
   # ------------------------------
   icon_clear_night: !input icon_clear_night
   icon_cloudy: !input icon_cloudy
