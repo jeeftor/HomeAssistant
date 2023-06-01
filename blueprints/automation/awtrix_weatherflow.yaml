@@ -561,7 +561,7 @@ variables:
       {{sun_min_until_next_event}} min
     {%- endif %}
   sun_event_icon: >-
-    {{ iif(next_event == 'sunrise', icon_sunrise, icon_sunset) }}
+    {{ iif(sun_next_event == 'sunrise', icon_sunrise, icon_sunset) }}
   sun_event_payload: >-
 
     {"icon":"{{sun_event_icon}}", "text":"{{sun_next_str}}"}
