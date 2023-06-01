@@ -427,7 +427,7 @@ blueprint:
       description: >
         This is the icon ID which maps to the `sunrise`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/53413_icon_thumb.gif?v=2)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53418_icon_thumb.gif?v=1)
       selector:
         text:
       default: "w-sunrise"
@@ -437,7 +437,7 @@ blueprint:
       description: >
         This is the icon ID which maps to the `sunset`
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/53412_icon_thumb.gif?v=2)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53417_icon_thumb.gif?v=1)
       selector:
         text:
       default: "w-sunset"
@@ -490,21 +490,26 @@ variables:
     {%- set ts_rise = rise |as_timestamp %}
     {%- set ts_set = set |as_timestamp %}
     {{ iif(ts_set < ts_rise,'sunset','sunrise') }}
-  sun_next_str: >-
-    {%- set rise = state_attr('sun.sun','next_rising') %}
-    {%- set set = state_attr('sun.sun','next_setting') %}
-    {%- set ts_rise = rise |as_timestamp %}
-    {%- set ts_set = set |as_timestamp %}
-    {{ iif(next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
-
   sun_min_until_next_event: >-
     {%- set rise = state_attr('sun.sun','next_rising') %}
     {%- set set = state_attr('sun.sun','next_setting') %}
     {%- set ts_rise = rise |as_timestamp %}
     {%- set ts_set = set |as_timestamp %}
-    {{ iif(next_event == 'sunrise',(ts_rise - utcnow()|as_timestamp) / 60,(ts_set - utcnow()|as_timestamp) / 60) }}
+    {{ iif(next_event == 'sunrise',(ts_rise - utcnow()|as_timestamp) / 60,(ts_set - utcnow()|as_timestamp) / 60) | round(0) }}
+
+  sun_next_str: >-
+    {%- set rise = state_attr('sun.sun','next_rising') %}
+    {%- set set = state_attr('sun.sun','next_setting') %}
+    {%- set ts_rise = rise |as_timestamp %}
+    {%- set ts_set = set |as_timestamp %}
+    {%- if sun_time_type == 'Actual' %}
+      {{ iif(next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
+    {%- else %}
+      {{sun_min_until_next_event}} min
+    {%- endif %}
 
   sun_event_payload: >-
+
     {"icon":"w-{{sun_next_event}}", "text":"{{sun_next_str}}"}
   sun_payload: >-
     {{ iif(sun_time_dif >= sun_min_until_next_event, sun_event_payload, "{}") }}
