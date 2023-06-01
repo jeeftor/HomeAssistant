@@ -4,6 +4,10 @@ blueprint:
   description: >
     This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
 
+    ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/docs/weather.gif)
+
+
+    ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/docs/sunset.gif)
 
     This blueprint will publish to two separate topics.  `jeef_weather` for the weather report and `jeef_weather_sun` if its near sunrise/set
 
