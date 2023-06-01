@@ -167,6 +167,67 @@ blueprint:
           multiple: false
           filter:
             integration: rest
+    show_day_moon:
+      name: Show moon during the day
+      description: >
+        Sometimes the moon rises during the day. Sometimes it rises at night. If this is true it will only draw the moon if its past sunset
+      selector:
+        boolean:
+      default: False
+    #----------------------------------------
+    # Sunrise Sunset Times :)
+    #----------------------------------------
+    show_sun_rise_set:
+      name: Show Sunrise/Sunset
+      description: >
+        Prior to both sunrise and sunset times offer a message about pending sun transitional state
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/15331_icon_thumb.gif?v=1)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/22246_icon_thumb.gif?v=16)
+      selector:
+        boolean:
+      default: False
+    sun_time_dif:
+      name: Sun Time Prior 🕰️
+      description: How many minutes before sun rise/set should the message be active
+      selector:
+        number:
+          min: 5
+          max: 60
+          unit_of_measurement: "min"
+      default: 30
+
+    sun_time_type:
+      name: Sun Time Type
+      description: >
+        When showing a notification about sun rise/set it can offer 3 different time formats:
+
+          - Relative Time:  `12 min`
+          - Actual Time:  `8:31 pm` or `22:31`
+      selector:
+        select:
+          options:
+            - Relative
+            - Actual
+      default: "Actual"
+    sun_time_format:
+      name: Actual Time Format
+      description: >
+        If you are using actual time you can enter a STRFTIME format string here for the time. Some options would be:
+
+          - `%H%M` which would render `0529`
+          
+          - `%-I%M%p` which woudl render `529AM`
+          - `%-I%:M%p` which woudl render `5:29AM`
+
+
+
+          For details see https://strftime.org/
+      selector:
+        text:
+          type: text
+      default: "%-I%M%p"
+
     #-----------------------------------------
     # This was really annoying to generate :)
     #-----------------------------------------
@@ -367,7 +428,40 @@ variables:
   moon_set: "{{state_attr(moon_times,'moonset')}}"
   moon_alt: "{{state_attr(moon_times,'moon_altitude')}}"
   moon_risen: "{{moon_alt > 0}}"
+  show_day_moon: !input show_day_moon
 
+  # ------------------------------
+  # SUN THINGS
+  # ------------------------------
+  sun_time_dif: !input sun_time_dif
+  sun_time_type: !input sun_time_type
+  sun_time_format: !input sun_time_format
+
+  sun_next_event: >-
+    {%- set rise = state_attr('sun.sun','next_rising') %}
+    {%- set set = state_attr('sun.sun','next_setting') %}
+    {%- set ts_rise = rise |as_timestamp %}
+    {%- set ts_set = set |as_timestamp %}
+    {{ iif(ts_set < ts_rise,'sunset','sunrise') }}
+  sun_next_str: >-
+    {%- set rise = state_attr('sun.sun','next_rising') %}
+    {%- set set = state_attr('sun.sun','next_setting') %}
+    {%- set ts_rise = rise |as_timestamp %}
+    {%- set ts_set = set |as_timestamp %}
+    {{ iif(next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
+
+  sun_min_until_next_event: >-
+    {%- set rise = state_attr('sun.sun','next_rising') %}
+    {%- set set = state_attr('sun.sun','next_setting') %}
+    {%- set ts_rise = rise |as_timestamp %}
+    {%- set ts_set = set |as_timestamp %}
+    {{ iif(next_event == 'sunrise',(ts_rise - utcnow()|as_timestamp) / 60,(ts_set - utcnow()|as_timestamp) / 60) }}
+
+  sun_event_payload: >-
+    {"icon":"w-{{sun_next_event}}", "text":"{{sun_next_str}}"}
+  sun_payload: >-
+    {{ iif(sun_time_dif >= sun_min_until_next_event, sun_event_payload, "{}") }}
+  # ------------------------------
   icon_clear_night: !input icon_clear_night
   icon_cloudy: !input icon_cloudy
   icon_exceptional: !input icon_exceptional
@@ -428,7 +522,7 @@ variables:
     {%- endif %}
 
   moon_data: >
-    {%- macro hi(phase,x=22,y=0) %}
+    {%- macro draw_moon(phase,x=22,y=0) %}
       {%- if phase == 'full'  %}
           {"db":[{{x}},{{y}},8,8,[
           0,	0,	54970,	54970,	54970,	54970,	0,	0,
@@ -538,8 +632,8 @@ variables:
           ]]}
         {%- endif  %}
 
-    {% endmacro %}
-    {{hi(moon_phase,22,0)}}
+    {% endmacro %}        
+    {{iif(weather == 'clear-night', draw_moon(moon_phase,0,0), draw_moon(moon_phase,22,0))}}
 
   payload: >
     {%- macro interpolate(dictionary, x) -%}
@@ -613,11 +707,13 @@ variables:
     {# Define the color mapping dictionary #}
 
     { "text": [
-      {"t":"{{ current_temp}}°",
+      {"t":"{{ current_temp}}°{% if moon_risen %}    {%else%}{% endif %}",
       "c":"{{interpolate(color_dict, current_temp | float)}}"}
       ],
+    "textOffset":-8,
     "draw": [
-      {{draw_forecast_lines(8,hours_to_show,0)}}{% if moon_risen %}, {{moon_data}} {% endif %}
+      {{draw_forecast_lines(8,hours_to_show,0)}}      
+      {% if moon_risen and (show_day_moon or (state_attr('sun.sun', 'elevation') > 0)) %}, {{moon_data}} {% endif %}
     ],
     "icon": "{{icon}}",
     "duration": 30,
@@ -647,3 +743,10 @@ action:
             topic: "{{ repeat.item }}"
             payload: >
               {{payload}}
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item ~ '_sun'}} "
+            payload: >
+              {{sun_payload}}
