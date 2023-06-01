@@ -259,9 +259,14 @@ blueprint:
       selector:
         boolean:
       default: True
-    sun_time_dif:
+    sun_event_minute_threshold:
       name: Sun Time Prior 🕰️
-      description: How many minutes before sun rise/set should the message be active
+      description: >-
+        This value controls when to show sunrise/set notifications. 
+
+
+        If the sunrise will occur in `50` minutes and this value is set to `60` it will show, however if this value is only `30` it won't show.
+
       selector:
         number:
           min: 5
@@ -525,7 +530,7 @@ variables:
   # ------------------------------
   # SUN THINGS
   # ------------------------------
-  sun_time_dif: !input sun_time_dif
+  sun_event_minute_threshold: !input sun_event_minute_threshold
   sun_time_type: !input sun_time_type
   sun_time_format: !input sun_time_format
   icon_sunrise: !input icon_sunrise
@@ -551,7 +556,7 @@ variables:
     {%- set ts_rise = rise |as_timestamp %}
     {%- set ts_set = set |as_timestamp %}
     {%- if sun_time_type == 'Actual' %}
-      {{ iif(next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
+      {{ iif(sun_next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
     {%- else %}
       {{sun_min_until_next_event}} min
     {%- endif %}
@@ -562,7 +567,7 @@ variables:
     {"icon":"{{sun_event_icon}}", "text":"{{sun_next_str}}"}
   sun_payload: >-
     {%- if show_sun_rise_set %}
-    {{ iif(sun_time_dif >= sun_min_until_next_event, sun_event_payload, "{}") }}
+    {{ iif(sun_event_minute_threshold >= sun_min_until_next_event, sun_event_payload, "{}") }}
     {%- else %}
     {}
     {%- endif %}
