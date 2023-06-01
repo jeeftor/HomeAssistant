@@ -5,6 +5,34 @@ blueprint:
     This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
 
 
+    ## ⚠️ REQUIREMENTS ⚠️
+
+    For this blueprint to work you MUST have a few things pre-setup. 
+
+    ### Moon Integration 🌕️
+
+    The moon integration is required. You can add it via the [moon](https://www.home-assistant.io/integrations/moon/) page
+
+    ### Moon Rise/Set Sensor 🌕️ ⏲️
+
+    As Home Assistant doesn't _currently_ provide moon rise/set times you will need to get this from some api. 
+    You can use the [ipgeolocation](https://app.ipgeolocation.io) API.
+
+    To do so you will need to create an account and extract your `API_KEY`. Additionally you need your `LAT` and `LON`.
+
+    Then you can add a [REST](https://www.home-assistant.io/integrations/sensor.rest/) sensor to your `configuraiton.yaml` file like the one here:
+
+        resource: https://api.ipgeolocation.io/astronomy?lat=<LAT>&long=-<LON>&apiKey=<API_KEY>
+        name: ip_geo_location
+        scan_interval: 300
+        value_template: "OK"
+        json_attributes:
+          - moonrise
+          - moonset
+          - moon_altitude
+
+    ### Flow Icons
+
     The simple way to get the icons is through the flow page: [https://flows.blueforcer.de/flow/6RpwLAMGOlZ4](https://flows.blueforcer.de/flow/6RpwLAMGOlZ4) and click the *Upload assets to Awtrix Light*
 
 
@@ -180,10 +208,9 @@ blueprint:
     show_sun_rise_set:
       name: Show Sunrise/Sunset
       description: >
-        Prior to both sunrise and sunset times offer a message about pending sun transitional state
+        Prior to both sunrise and sunset times offer a message about pending sun transitional state.
 
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/15331_icon_thumb.gif?v=1)
-        ![](https://developer.lametric.com/content/apps/icon_thumbs/22246_icon_thumb.gif?v=16)
+        _You can change the icons down below._
       selector:
         boolean:
       default: False
@@ -394,6 +421,26 @@ blueprint:
       selector:
         text:
       default: "w-windy-variant"
+
+    icon_sunrise:
+      name: Icon for sunrise
+      description: >
+        This is the icon ID which maps to the `sunrise`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53413_icon_thumb.gif?v=2)
+      selector:
+        text:
+      default: "w-sunrise"
+
+    icon_sunset:
+      name: Icon for sunset
+      description: >
+        This is the icon ID which maps to the `sunset`
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53412_icon_thumb.gif?v=2)
+      selector:
+        text:
+      default: "w-sunset"
 
 mode: restart
 variables:
