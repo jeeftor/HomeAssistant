@@ -220,7 +220,7 @@ blueprint:
       selector:
         number:
           min: 5
-          max: 60
+          max: 1440
           unit_of_measurement: "min"
       default: 30
 
