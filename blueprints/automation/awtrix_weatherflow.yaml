@@ -12,10 +12,30 @@ blueprint:
     For this blueprint to work you MUST have a few things pre-setup. 
 
     ### Moon Integration 🌕️
+         .------.
+        ( I MOON )    ..
+         `------'   .' /
+              O    /  ;
+                o i  OO
+                 C    `-.  Make sure you've
+                 |    <-'      enabled
+                 (  ,--.   the MOON Sensor
+                  V  \_)
+                   \  :
+                    `._\.    
+
 
     The moon integration is required. You can add it via the [moon](https://www.home-assistant.io/integrations/moon/) page or just by [clicking here](https://my.home-assistant.io/redirect/config_flow_start?domain=moon)
 
     ### Moon Rise/Set Sensor 🌕️ ⏲️
+
+              M
+             (X)
+            // \\   Lets use a GeoLocation to find
+           //   \\     out the Moon Rise / Set
+          //     \\       TIMES
+         //       \\
+        /           \
 
     As Home Assistant doesn't _currently_ provide moon rise/set times you will need to get this from some api. 
     You can use the [ipgeolocation](https://app.ipgeolocation.io) API.
@@ -166,7 +186,12 @@ blueprint:
     moon:
       name: Moon Phase Sensor
       description: >
+        🌑️🌒️🌓️🌔️🌖️🌗️🌘️
+
         To setup a moon sensor see here: https://www.home-assistant.io/integrations/moon/
+
+        or just [clicking here](https://my.home-assistant.io/redirect/config_flow_start?domain=moon)
+
       selector:
         entity:
           multiple: false
@@ -211,6 +236,20 @@ blueprint:
       name: ☀️ Show Sunrise/Sunset
       description: >
         Prior to both sunrise and sunset times offer a message about pending sun transitional state.
+
+                       :
+              `.       ;        .'
+                `.  .-'''-.   .'
+                  ;'  __   _;'
+                 /   '_    _`\       TURN ME ON!
+                |  _( a (  a  |
+            ''''| (_)    >    |``````
+                 \    \    / /
+                  `.   `--'.'
+                 .' `-,,,-' `.
+               .'      :      `.
+                       :
+
 
         _You can change the icons for sun rise/set way down below._
       selector:
