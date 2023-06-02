@@ -316,7 +316,14 @@ blueprint:
 
           ![](https://developer.lametric.com/content/apps/icon_thumbs/53383_icon_thumb.gif?v=2) - `53383`
 
-        However - if the moon is actually visible it will replace this icon with the icon for the correct moon phase. 
+      selector:
+        text:
+      default: "w-clear-night"
+    use_moon_clear_night:
+      name: Swap Clear Night for Moon
+      description: >-
+
+        Toggle this if you wish to swap the `clear-night` icon for one representing the current moon phase. This will only be the case *IF THE MOON HAS RISEN*
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/2314_icon_thumb.png?v=1) - `full_moon`
 
@@ -335,10 +342,10 @@ blueprint:
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/2321_icon_thumb.png?v=1) - `waxing_gibbous`
 
         If you wish to use a different icon please enter its text in the box to the right
-
       selector:
-        text:
-      default: "w-clear-night"
+        boolean:
+      default: True
+
     icon_cloudy:
       name: Icon for cloudy
       description: >
@@ -574,6 +581,7 @@ variables:
 
   # ------------------------------
   icon_clear_night: !input icon_clear_night
+  use_moon_clear_night: !input use_moon_clear_night
   icon_cloudy: !input icon_cloudy
   icon_exceptional: !input icon_exceptional
   icon_fog: !input icon_fog
@@ -626,7 +634,7 @@ variables:
     'windy-variant': icon_windy_variant})}}
 
   icon: >
-    {%- if weather == 'clear_night' %}
+    {%- if ((weather == 'clear_night') and use_moon_clear_night) %}
       {{clear_night_dict[moon_phase]}}
     {%- else %}
       {{ icon_dict[weather] }}
@@ -744,7 +752,7 @@ variables:
         {%- endif  %}
 
     {% endmacro %}        
-    {{iif(weather == 'clear-night', draw_moon(moon_phase,0,0), draw_moon(moon_phase,22,0))}}
+    {{iif(weather == 'clear-night' and use_moon_clear_night, draw_moon(moon_phase,0,0), draw_moon(moon_phase,22,0))}}
 
   payload: >
     {%- macro interpolate(dictionary, x) -%}
