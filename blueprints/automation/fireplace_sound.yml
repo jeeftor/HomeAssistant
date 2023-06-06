@@ -1,0 +1,144 @@
+---
+blueprint:
+  name: Fireplace 🔥️ Sounds 🎶️
+  description: >
+    This blueprint will let you tie together a speaker(s) and a fireplace so you can get nice fireplace sounds when the fire is on
+  domain: automation
+  input:
+    fireplace_sensor:
+      name: Fireplace Sensor
+      description: Sensor that has the on/off state of the fireplace
+      selector:
+        entity:
+          domain:
+            - binary_sensor
+            - input_boolean
+    player:
+      name: Where to play fireplace sounds
+      selector:
+        entity:
+          domain: media_player
+    start_vol:
+      name: Volume settings
+      description: At what volume should the fire sound play
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: .1
+      default: .27
+    end_vol:
+      name: Volume settings
+      description: What level do you wish to return the volume to after you stop playing the fire sounds.
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: .1
+      default: .27
+
+    media:
+      name: Select a sound
+      description: Due to limitations in HA you will also have to re-select the media player above
+      selector:
+        media:
+mode: restart
+variables:
+  fireplace: !input fireplace_sensor
+  media: !input media
+  player: !input player
+  start_vol: !input start_vol
+  end_vol: !input end_vol
+  fire_content_id: "{{ media['media_content_id']  }}"
+  fire_content_substr: "{{ media['media_content_id']  | replace('media-source://media_source/','') }}"
+  current_content_id: "{{ state_attr(player,'media_content_id') }}"
+  is_on: "{{is_state(fireplace,'on')}}"
+  is_fire_sound: "{{ fire_content_substr in current_content_id }}"
+  is_playing: "{{is_state(player,'playing')}}"
+  action_to_take: >-
+    {%- if is_on and not is_playing %}
+      {%- if trigger.id == 'stopped' and is_fire_sound %}
+      do_nothing
+      {%- else %}
+      play_music
+      {%- endif %}
+    {%- elif not is_on and (is_playing and is_fire_sound) %}
+    stop_music
+    {%- else %}
+    do_nothing
+    {%- endif %}
+
+trigger:
+  - platform: state
+    entity_id: !input fireplace_sensor
+    id: fireplace
+  - platform: state
+    # Stop playing Music
+    entity_id: !input player
+    id: stopped
+    from: "playing"
+    for:
+      seconds: 5
+  # - platform: state
+  #   # Start playing music... not sure why i need this one?
+  #   entity_id: !input player
+  #   id: media_start
+  #   to: "playing"
+
+# Don't do anything for do_nothing
+condition: []
+
+action:
+  - choose:
+      # - conditions:
+      #     - condition: trigger
+      #       id: stop_5_seconds
+      #   sequence: []
+      # # Not playing music, and the fire is on
+      - conditions:
+          - condition: template
+            value_template: "{{action_to_take == 'play_music'}}"
+        sequence:
+          # Unjoin the groups
+          - service: media_player.unjoin
+            target:
+              entity_id: "{{player}}"
+          # set volume
+          - service: media_player.volume_set
+            data:
+              volume_level: "{{start_vol}}"
+            target:
+              entity_id: "{{player}}"
+          # play
+          - service: media_player.play_media
+            data:
+              media_content_id: "{{fire_content_id}}"
+              media_content_type: music
+            target:
+              entity_id: "{{player}}"
+          # Repeat ON
+          - service: media_player.repeat_set
+            data:
+              repeat: one
+            target:
+              entity_id: "{{player}}"
+
+      # Stop the MUSIC
+      - conditions:
+          - condition: template
+            value_template: "{{action_to_take == 'stop_music'}}"
+        sequence:
+          # Pause/Stop the current "stuff" the current
+          - service: media_player.media_stop
+            target:
+              entity_id: "{{player}}"
+          - service: media_player.volume_set
+            data:
+              volume_level: "{{end_vol}}"
+            target:
+              entity_id: "{{player}}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{action_to_take == 'do_nothing'}}"
+        sequence: []
