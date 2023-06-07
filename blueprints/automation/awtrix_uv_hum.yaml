@@ -3,6 +3,18 @@ blueprint:
   name: AWTRIX UV☀️ Humidity💧️
   description: >
     Display both a humidity value and the UV index on the awtrix.
+
+    ### Notes about UV
+
+    The Weatherflow UV readings seem to be instantaneous so it may be best to create an average sensor for the readings if you don't want to see wild fluctuations. You can do this by adding the following sensor to your `sensors:` block in `configuration.yaml`
+
+        - platform: statistics
+          name: "Weatherflow uv index 10 minute average"
+          entity_id: sensor.weatherflow_uv_index
+          state_characteristic: mean
+          max_age:
+            minutes: 10
+
   domain: automation
   input:
     awtrix:
@@ -24,35 +36,86 @@ blueprint:
       description: A sesnor that provides a uv index
       selector:
         entity:
+    forecast:
+      name: Hourly UV Forecast
+      description: >
+        Select a sensor that provides an Hourly forecast (not a daily one)
 
+        This integration has been tested with:
+
+          - HACS [Weatherflow](https://github.com/briis/hass-weatherflow) integration 
+          
+          - *Note* that [Openweather](https://www.home-assistant.io/integrations/openweathermap/) does not seem to provide UV Index values
+      selector:
+        entity:
+          domain:
+            - weather
+          multiple: false
+    forecast_field:
+      name: UV Index Field
+      description: >
+        Once you've selected your hourly forecast you will need to identify which attributes in the forecast provides a temperature value. 
+
+          - If you are using [Weatherflow](https://github.com/briis/hass-weatherflow) the field will be `uv_index`
+      selector:
+        text:
+      default: "uv_index"
 mode: restart
 variables:
   device_id: !input awtrix
   awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
   message_topic: "{{awtrix ~ '/custom/hum'}}"
   notification_topic: "{{awtrix ~ '/notify' }}"
+  uv: "{{states('sensor.weatherflow_uv_index') | round}}"
+  forecast_var: !input forecast
+  forecast_field: !input forecast_field
+  forecast: "{{state_attr(forecast_var,'forecast')}}"
+
+  uv_forecast: >-
+    {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
+    #EE82EE
+    {%- elif index | float >= 8 -%}
+    #FF0000
+    {%- elif index | float >= 6 -%}
+    #FF8C00
+    {%- elif index | float >= 3 -%}
+    #FFFF00
+    {%- else -%}
+    #00FF00
+    {%- endif -%}
+    {%- endmacro -%}
+    {%- macro draw_uv_forecast_h(x,y,hours,height) %}
+      {%- for hour in range(hours) %}
+        {%- set uv_index = forecast[hour][forecast_field] |int %}
+        {%- set uv_color = get_uv_color(uv_index) %}
+        {%- if height == 0 %}
+          {"dp": [{{x+hour}},{{y}},"{{uv_color }}"]}
+        {%- else %}
+          {"dl": [{{x+hour}},{{y}},{{x+hour}},{{y - height}},"{{uv_color}}"]}
+        {%- endif %}
+        {%- if hour+1 != hours %},{%endif%}
+      {%- endfor %}
+    {%- endmacro %}
+    {{ draw_uv_forecast_h(22,7,8,0) }}
   payload: >-
-    {% set uv = states('sensor.weatherflow_uv_index') | round %} 
     {% set hum = states('sensor.weatherflow_relative_humidity') %}
 
-
     {%- if uv|float >= 10-%}
-      {%- set uv_offset = "23,2" -%}
+      {%- set uv_offset = "23,1" -%}
     {%- else %}
-      {%- set uv_offset = "23,2" -%}      
+      {%- set uv_offset = "25,1" -%}      
     {%- endif %} 
 
-
     {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
-    #582FBD
+    #EE82EE
     {%- elif index | float >= 8 -%}
-    #CD0010
+    #FF0000
     {%- elif index | float >= 6 -%}
-    #F44208
+    #FF8C00
     {%- elif index | float >= 3 -%}
-    #F5E10A
+    #FFFF00
     {%- else -%}
-    #248703
+    #00FF00
     {%- endif -%}
     {%- endmacro -%}
 
@@ -81,7 +144,7 @@ variables:
         {"dt":[6,2,"{{hum}}%"]},
         {{draw_u(19,1,"#00ffaa")}},
         {{draw_v(19,5,"#00ffaa")}},
-        
+        {{uv_forecast}},
         {{draw_uv()}}
       ]
     }
