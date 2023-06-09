@@ -2,7 +2,10 @@
 blueprint:
   name: AWTRIX Weather ⛈️ + Forecast + 🌕️
   description: >
+
+
     This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
+
 
     ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/docs/weather.gif)
 
@@ -62,7 +65,10 @@ blueprint:
     The simple way to get the icons is through the flow page: [https://flows.blueforcer.de/flow/6RpwLAMGOlZ4](https://flows.blueforcer.de/flow/6RpwLAMGOlZ4) and click the *Upload assets to Awtrix Light*
 
 
-    _This blueprint will be updated as new features_
+    _This blueprint ~will~ may be updated as new features_
+
+    ![](https://www.gravatar.com/avatar/3b9968835eb719e5d78a04ba7a2bafbd?s=64)
+    https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/blueprints/automation/awtrix_weatherflow.yaml
 
   domain: automation
   input:
@@ -136,7 +142,7 @@ blueprint:
 
         If you live in a country with the following flags:
 
-               🇺🇸️🇵🇷️🇵🇼️🇧🇿️🇰🇾️🇫🇲️🇲🇭️🇻🇮️🇬🇺️
+        🇺🇸️🇵🇷️🇵🇼️🇧🇿️🇰🇾️🇫🇲️🇲🇭️🇻🇮️🇬🇺️
 
         You probbaly use Farenheit.
 
@@ -554,15 +560,16 @@ blueprint:
 mode: restart
 variables:
   device_ids: !input awtrix
+  app_topic: jeef_weather
   devices_topics: >-
-    {%- macro get_device(device_id) %}
-    {{iif(device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name'))}}
-    {% endmacro -%}
+    {%- macro get_device_topic(device_id) %}
+    {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
 
     {%- set ns = namespace(devices=[]) %}
     {%- for device_id in device_ids %}
-      {%- set device=get_device(device_id)|replace(' ','') %}
-      {% set ns.devices = ns.devices + [ device ~ '/custom/jeef_weather'] %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_topic] %}
     {%- endfor %}
     {{ ns.devices }}
 
@@ -657,7 +664,15 @@ variables:
     {%- if sun_time_type == 'Actual' %}
       {{ iif(sun_next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
     {%- else %}
-      {{sun_min_until_next_event}} min
+      {% set hours = sun_min_until_next_event // 60 %}
+      {% set remaining_minutes = sun_min_until_next_event % 60 %}
+
+      {% if hours == 0 %}
+          {{ remaining_minutes }} min
+      {% else %}
+          {{ hours }}h{{ remaining_minutes }}m
+      {% endif %}
+      
     {%- endif %}
   sun_event_icon: >-
     {{ iif(sun_next_event == 'sunrise', icon_sunrise, icon_sunset) }}
@@ -916,7 +931,6 @@ variables:
     {%- endmacro %}
     {# Define the color mapping dictionary #}
     {
-
     "draw": [
       {{draw_forecast_lines(8,hours_to_show,0)}},
       {"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}      

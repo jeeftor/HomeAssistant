@@ -25,7 +25,7 @@ blueprint:
           integration: mqtt
           manufacturer: Blueforcer
           model: AWTRIX Light
-          multiple: false
+          multiple: true
     hum:
       name: Humidity Sensor
       description: A sesnor that provides a humidity value
@@ -62,10 +62,20 @@ blueprint:
       default: "uv_index"
 mode: restart
 variables:
-  device_id: !input awtrix
-  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
-  message_topic: "{{awtrix ~ '/custom/hum'}}"
-  notification_topic: "{{awtrix ~ '/notify' }}"
+  app_topic: jeef_uv_hum
+  device_ids: !input awtrix
+  devices_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device = get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_topic] %}
+    {%- endfor %}
+    {{ ns.devices }}
+
   uv: "{{states('sensor.weatherflow_uv_index') | round}}"
   forecast_var: !input forecast
   forecast_field: !input forecast_field
@@ -155,9 +165,13 @@ trigger:
 
 condition: []
 action:
-  - service: mqtt.publish
-    data:
-      qos: 0
-      topic: "{{message_topic}}"
-      payload: >
-        {{payload}}
+  - repeat:
+      for_each: "{{ devices_topics }}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item }}"
+            payload: >
+              {{payload}}

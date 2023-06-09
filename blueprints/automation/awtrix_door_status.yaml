@@ -25,7 +25,7 @@ blueprint:
           integration: mqtt
           manufacturer: Blueforcer
           model: AWTRIX Light
-          multiple: false
+          multiple: true
     app_name:
       name: Awtrix Applicaiton name
       description: This is the app name listed in the MQTT topic - it should be unique
@@ -174,11 +174,30 @@ mode: queued
 max: 10
 
 variables:
-  device_id: !input awtrix
-  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
-  app: !input app_name
-  message_topic: "{{awtrix ~ '/custom/' ~ app }}"
-  notification_topic: "{{awtrix ~ '/notify' }}"
+  device_ids: !input awtrix
+  app_topic: !input app_name
+  message_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ 'jeef_' ~ app_topic] %}
+    {%- endfor %}
+    {{ ns.devices }}
+  notification_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/notify'] %}
+    {%- endfor %}
+    {{ ns.devices }}
   trigger_sensor: !input trigger_sensor
   last_change_seconds: "{{ as_timestamp(now()) - as_timestamp(states[trigger_sensor].last_changed | default(0)) }}"
   last_changed_str: "{{relative_time(states[trigger_sensor].last_changed
@@ -246,60 +265,78 @@ action:
               - condition: template
                 value_template: "{{ last_change_seconds > 60 }}"
         sequence:
-          - service: mqtt.publish
-            data:
-              qos: 0
-              retain: false
-              topic: "{{message_topic}}"
-              payload:
-                "{{is_open_payload}}"
-                # {"text": "{{last_changed_str}}", "icon":"{{icon_is_open}}"}
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{{is_open_payload}}"
 
       # Door open logic (Notification + message)
       - conditions:
           - condition: trigger
             id: opened
         sequence:
-          - service: mqtt.publish
-            data:
-              qos: 0
-              retain: false
-              topic: "{{notification_topic}}"
-              payload: "{{open_payload}}"
-
-      # Door open logic (Notification + message)
+          - repeat:
+              for_each: "{{ notification_topics }}"
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: >
+                      {{open_payload}}
+      # Door Close Logic
       - conditions:
           - condition: trigger
             id: closed
         sequence:
-          - service: mqtt.publish
-            data:
-              qos: 0
-              retain: false
-              topic: "{{notification_topic}}"
-              payload: "{{close_payload}}"
-
-          - service: mqtt.publish
-            data:
-              qos: 0
-              retain: false
-              topic: "{{message_topic}}"
-              payload: "{}"
+          - repeat:
+              for_each: "{{ notification_topics }}"
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: >
+                      {{close_payload}}
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{}"
 
       # Door error status
       - conditions:
           - condition: trigger
             id: error
         sequence:
-          - service: mqtt.publish
-            data:
-              qos: 0
-              retain: false
-              topic: "{{notification_topic}}"
-              payload: "{{error_alert_payload}}"
-          - service: mqtt.publish
-            data:
-              qos: 0
-              retain: false
-              topic: "{{message_topic}}"
-              payload: "{{error_message_payload}}"
+          - repeat:
+              for_each: "{{ notification_topics }}"
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: >
+                      {{error_alert_payload}}
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - service: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: >
+                      {{error_alert_payload}}

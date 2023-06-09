@@ -25,7 +25,7 @@ blueprint:
           integration: mqtt
           manufacturer: Blueforcer
           model: AWTRIX Light
-          multiple: false
+          multiple: true
     app_name:
       name: Awtrix Applicaiton name
       description: This is the app name listed in the MQTT topic - it should be unique
@@ -70,27 +70,26 @@ blueprint:
 
 mode: restart
 variables:
-  device_id: !input awtrix
-  awtrix: "{{ iif( device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name') ) }}"
-  app: !input app_name
-  message_topic: "{{awtrix ~ '/custom/' ~ app }}"
+  device_ids: !input awtrix
+  app_name: !input app_name
+  devices_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_name] %}
+    {%- endfor %}
+    {{ ns.devices }}
+
   battery_sensor: !input battery
   base_icon: "{{states[battery_sensor] }}"
   message_text: !input message_text
   push_icon: !input push_icon
-
-trigger:
-  - platform: time_pattern
-    minutes: /1
-
-condition: []
-action:
-  - service: mqtt.publish
-    data:
-      qos: 0
-      topic: "{{message_topic}}"
-      payload: >-
-        {"icon":"{{ states[battery_sensor].attributes.icon 
+  payload: >-
+    {"icon":"{{ states[battery_sensor].attributes.icon 
         | replace('mdi:','') 
         | replace('90','80') 
         | replace('70','60')
@@ -99,3 +98,20 @@ action:
         "text":"{{message_text}}",
         "pushIcon":{{push_icon}},
         "progress":"{{states[battery_sensor].state}}","pushIcon":1}
+
+trigger:
+  - platform: time_pattern
+    minutes: /1
+
+condition: []
+action:
+  - repeat:
+      for_each: "{{ devices_topics }}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item }}"
+            payload: >
+              {{payload}}
