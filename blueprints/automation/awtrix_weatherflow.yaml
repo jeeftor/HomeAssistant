@@ -388,6 +388,27 @@ blueprint:
         text:
           type: text
       default: "%-I%M%p"
+    message_duration_forecast:
+      name: Forecast Duration ⏱️
+      description: >-
+        How long should the forecast message remain on the screen(in seconds).  *If you select `0` it will use the Global App Time*
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: "sec"
+      default: 30
+
+    message_duration_riseset:
+      name: Sun Rise/Set Duration ⏱️
+      description: >-
+        How long should the sunrise sunset message remain on the screen(in seconds).  *If you select `0` it will use the Global App Time*
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: "sec"
+      default: 30
 
     #-----------------------------------------
     # This was really annoying to generate :)
@@ -601,6 +622,8 @@ variables:
   #----------------
   # Temp & Text
   # --------------
+  message_duration: !input message_duration_forecast
+  message_duration_riseset: !input message_duration_riseset
   current_temp_var: !input current_temp_var
   temp_digits: !input temp_digits
   temp_suffix: !input temp_suffix
@@ -664,21 +687,26 @@ variables:
     {%- if sun_time_type == 'Actual' %}
       {{ iif(sun_next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
     {%- else %}
+    {#- relative time #}
       {% set hours = sun_min_until_next_event // 60 %}
       {% set remaining_minutes = sun_min_until_next_event % 60 %}
 
       {% if hours == 0 %}
           {{ remaining_minutes }} min
       {% else %}
-          {{ hours }}h{{ remaining_minutes }}m
+          [
+            {"t":"{{hours}}", "c":"#ffffff"},
+            {"t":"h", "c":"#9c9d97"},
+            {"t":"{{remaining_minutes}}", "c":"#ffffff"},
+            {"t":"m", "c":"#9c9d97"}
+        ]
       {% endif %}
       
     {%- endif %}
   sun_event_icon: >-
     {{ iif(sun_next_event == 'sunrise', icon_sunrise, icon_sunset) }}
   sun_event_payload: >-
-
-    {"icon":"{{sun_event_icon}}", "text":"{{sun_next_str}}"}
+    {"icon":"{{sun_event_icon}}", "text":{{sun_next_str}}, "duration": {{message_duration_riseset}}}
   sun_payload: >-
     {%- if show_sun_rise_set %}
     {{ iif(sun_event_minute_threshold >= sun_min_until_next_event, sun_event_payload, "{}") }}
@@ -937,7 +965,7 @@ variables:
       {% if show_moon %}, {{moon_data}} {% endif %}
     ],
     "icon": "{{icon}}",
-    "duration": 30,
+    "duration": {{message_duration}},
     "pushIcon": 2,
     "lifetime": 120,
     "weather": "{{weather}}"
