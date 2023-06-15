@@ -14,18 +14,29 @@ blueprint:
           manufacturer: Blueforcer
           model: AWTRIX Light
           multiple: true
-    app_name:
-      name: Awtrix Applicaiton name
-      description: This is the app name listed in the MQTT topic - it should be unique
-      selector:
-        text:
-      default: jeef_hvac
     hvac:
       name: Climate Device / HVAC
       description: HVAC Device (Ecobee, Nest etc)
       selector:
         entity:
           domain: climate
+    heat_icon:
+      name: Heating icon name
+      selector:
+        text:
+      default: heat
+    cool_icon:
+      name: Cooling icon name
+      selector:
+        text:
+      default: cool
+    app_name:
+      name: Awtrix Applicaiton name
+      description: This is the app name listed in the MQTT topic - it should be unique
+      selector:
+        text:
+      default: jeef_hvac
+
 mode: restart
 variables:
   device_ids: !input awtrix
@@ -86,3 +97,27 @@ action:
             topic: "{{ repeat.item }}"
             payload: >
               {{payload}}
+
+#
+
+#     {%- if is_running and mode == 'heat' }
+#     {
+#       "icon":"heat",
+#       "text": [
+#         {"t":"{{temp_current_floor}}", "c": "#ffffff"},
+#         {"t":">", "c": "#9c9d97"},
+#         {"t":"{{target_temp}}", "c": "#ffffff"}
+#       ]
+#     }
+# {%- endif %}
+
+# {%- if is_running and mode == 'cool' %}
+#     {
+#       "icon":"cool",
+#       "text": [
+#         {"t":"{{temp_current_ceil}}", "c": "#ffffff"},
+#         {"t":">", "c": "#9c9d97"},
+#         {"t":"{{target_temp}}", "c": "#ffffff"}
+#       ]
+#     }
+# {%- endif %}
