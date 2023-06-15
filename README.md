@@ -2,6 +2,13 @@
 
 This archive contains various blueprints for Home Assistant
 
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_battery_monitor.yaml)
+
+
+
+
+
 ### Awtrix Lite - Battery Monitor
 
 <a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/blueprints/automation/awtrix_battery_monitor.yaml" target="_blank"><img src="https://my.home-assistant.io/badges/blueprint_import.svg" alt="Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled." /></a>
