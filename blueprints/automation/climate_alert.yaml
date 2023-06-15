@@ -1,0 +1,161 @@
+blueprint:
+  name: Climate Alert
+  description: Notification
+  domain: automation
+  input:
+    climate:
+      name: Climate Entity
+      selector:
+        entity:
+          domain: climate
+
+    # mode_heat:
+    #   name: Mode Heat
+    #   default: false
+    #   description: Run the automation when the heat is on
+    #   selector:
+    #     boolean:
+    # mode_cool:
+    #   name: Mode Cool
+    #   default: false
+    #   description: Run the automation when the aircondition is on
+    #   selector:
+    #     boolean:
+    # mode_heat_cool:
+    #   name: Mode Heat_cool
+    #   default: false
+    #   description: Run the automation when hvac mode is automatic (heat/cool)
+    #   selector:
+    #     boolean:
+    temp:
+      name: Trigger Temp
+      description: Temp value to trigger the automation. In `heat` mode the target temp must be above this value to trigger the automation, where as in `cool` mode it must be below.
+      default: 70
+      selector:
+        number:
+          min: 32
+          max: 100
+          unit_of_measurement: "°"
+          mode: box
+    mode:
+      description: "Select whether to trigger when Heating or Cooling"
+      selector:
+        select:
+          options:
+            - "heat"
+            - "cool"
+
+    notify_device:
+      name: Device to notify
+      description: Device needs to run the official Home Assistant app to receive notifications
+      selector:
+        device:
+          integration: mobile_app
+
+variables:
+  mode: !input mode
+  temp: !input temp
+  climate: !input climate
+
+trigger:
+  - platform: state
+    entity_id: !input climate
+    attribute: temperature
+
+action:
+  - alias: "choose alias (name)"
+    choose:
+      - conditions:
+          - condition: or
+            conditions:
+              - alias: "Too Hot - Heat"
+                condition: template
+                value_template: "{{ mode=='heat' and (states(climate) == 'heat') and (state_attr(climate, 'temperature') > temp)}}"
+              - alias: "Too Hot - Heat + AC"
+                condition: template
+                value_template: "{{ mode=='heat' and (states(climate) == 'heat_cool') and (state_attr(climate, 'temperature') > temp)}}"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: >-
+              🔥️ Heat set to {{ int(state_attr('climate.downstairs','temperature'))}}° 🌡️
+            data:
+              actions:
+                - action: DO_NOTHING
+                  title: Leave it as-is!
+                  icon: sfsymbols:checkmark.circle
+                  destructive: false
+                - action: SET_TO_TEMP
+                  title: Set it to {{ temp }}
+                  destructive: false
+                  icon: sfsymbols::arrow.down.circle
+      - conditions:
+          - condition: or
+            conditions:
+              - alias: "Too Cold - AC"
+                condition: template
+                value_template: "{{ mode=='cool' and (states(climate) == 'cool') and (state_attr(climate, 'temperature') < temp)}}"
+              - alias: "Too Cold - AC + Heat"
+                condition: template
+                value_template: "{{ mode=='cool' and (states(climate) == 'heat_cool') and (state_attr(climate, 'temperature') < temp)}}"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: >-
+              🥶️ AC set to {{ int(state_attr('climate.downstairs','temperature'))}}° ❄️
+            data:
+              actions:
+                - action: DO_NOTHING
+                  title: Leave it as-is!
+                  icon: sfsymbols:checkmark.circle
+                  destructive: false
+                - action: SET_TO_TEMP
+                  title: Set it to {{ temp }}
+                  destructive: false
+                  icon: sfsymbols::arrow.up.circle
+  - alias: Wait for Input
+    wait_for_trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: LEAVE_AS_IS
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: SET_TO_TEMP
+  - alias: "Change Climate"
+    choose:
+      - alias: "Set to target temp"
+        conditions: "{{ wait.trigger.event.data.action == 'SET_TO_TEMP' }}"
+        sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: !input climate
+            data:
+              temperature: !input temp
+      - alias: "Target minus 1"
+        conditions: "{{ wait.trigger.event.data.action == 'SET_TO_TEMP_MINUS_ONE' }}"
+        sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: !input climate
+            data:
+              temperature: "{{ int(temp) - 1 }}"
+      - alias: "Target plus 1"
+        conditions: "{{ wait.trigger.event.data.action == 'SET_TO_TEMP_PLUS_ONE' }}"
+        sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: !input climate
+            data:
+              temperature: "{{ int(temp) + 1 }}"
+
+    # - conditions:
+    #     condition
+    #   sequence:
+    #     action
+    # default:
+    # action
+mode: restart

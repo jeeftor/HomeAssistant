@@ -592,7 +592,7 @@ variables:
       {%- set device=get_device_topic(device_id)|replace(' ','') %}
       {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_topic] %}
     {%- endfor %}
-    {{ ns.devices }}
+    {{ ns.devices | reject('match','unavailable') | list}}
 
   forecast_var: !input forecast_var
   forecast: "{{state_attr(forecast_var,'forecast')}}"

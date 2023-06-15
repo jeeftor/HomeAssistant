@@ -1,0 +1,88 @@
+---
+blueprint:
+  name: AWTRIX HVAC 🥵 🌡️ 🥶
+  description: >
+    Monitor the status of your HVAC system with Awtrix
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: true
+    app_name:
+      name: Awtrix Applicaiton name
+      description: This is the app name listed in the MQTT topic - it should be unique
+      selector:
+        text:
+      default: jeef_hvac
+    hvac:
+      name: Climate Device / HVAC
+      description: HVAC Device (Ecobee, Nest etc)
+      selector:
+        entity:
+          domain: climate
+mode: restart
+variables:
+  device_ids: !input awtrix
+  app_name: !input app_name
+  devices_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_name] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list}}
+
+  climate: !input hvac
+  mode: "{{states(climate)}}"
+  target_temp: "{{ iif(state_attr('climate.downstairs', 'temperature'),state_attr('climate.downstairs', 'temperature'),0,state_attr('climate.downstairs', 'current_temperature')) | round(0)}}"
+  temp_current: "{{state_attr(climate, 'current_temperature')}}"
+  temp_current_ceil: "{{ temp_current | round(0,'ceil') }}"
+  temp_current_floor: "{{ temp_current | round(0,'floor') }}"
+
+  is_running: "{{ not state_attr('climate.downstairs', 'temperature') is none }}"
+
+  payload: >-
+    {%- if not is_running %}
+    {}
+    {%- elif mode == 'heat' %}
+    { "icon": "heat",
+      "text": [
+        {"t":"{{temp_current_floor}}", "c":"#ffffff"},
+        {"t":">","c":"#9c9d97"},
+        {"t":"{{target_temp}}", "c":"#ffffff"}
+      ] }
+    {% elif mode == 'cool' %}
+    { "icon": "cool",
+      "text": [
+        {"t":"{{temp_current_ceil}}", "c":"#ffffff"},
+        {"t":">","c":"#9c9d97"},
+        {"t":"{{target_temp}}", "c":"#ffffff"}
+      ] }
+    {% endif %}
+
+trigger:
+  - platform: time_pattern
+    seconds: /5
+
+condition: []
+action:
+  - repeat:
+      for_each: "{{ devices_topics }}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item }}"
+            payload: >
+              {{payload}}

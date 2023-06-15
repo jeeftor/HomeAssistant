@@ -28,14 +28,35 @@ blueprint:
           multiple: true
     hum:
       name: Humidity Sensor
-      description: A sesnor that provides a humidity value
+      description: >
+
+        A sensor that provides a humidity value
+
+          - `sensor.weatherflow_relative_humidity`
+
+          - `sensor.openweathermap_humidity`
+
       selector:
         entity:
     uv:
       name: UV Index
-      description: A sesnor that provides a uv index
+      description: >
+
+        A sesnor that provides a uv index like:
+
+          - `sensor.weatherflow_uv_index`
+
+          - `sensor.openweathermap_uv_index`
+
       selector:
         entity:
+    show_forecast:
+      name: Show Hourly UV Forecast
+      description: If you have a valid data source to obtain an hourly UV forecast you should use it
+      selector:
+        boolean:
+      default: true
+
     forecast:
       name: Hourly UV Forecast
       description: >
@@ -45,7 +66,7 @@ blueprint:
 
           - HACS [Weatherflow](https://github.com/briis/hass-weatherflow) integration 
           
-          - *Note* that [Openweather](https://www.home-assistant.io/integrations/openweathermap/) does not seem to provide UV Index values
+          - NOTE: [Openweather](https://www.home-assistant.io/integrations/openweathermap/) DOES NOT HAVE AN HOURLY UV FORECAST
       selector:
         entity:
           domain:
@@ -74,14 +95,15 @@ variables:
       {%- set device = get_device_topic(device_id)|replace(' ','') %}
       {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_topic] %}
     {%- endfor %}
-    {{ ns.devices }}
+    {{ ns.devices | reject('match','unavailable') | list}}
 
   uv: "{{states('sensor.weatherflow_uv_index') | round}}"
   forecast_var: !input forecast
   forecast_field: !input forecast_field
   forecast: "{{state_attr(forecast_var,'forecast')}}"
-
+  show_forecast: !input show_forecast
   uv_forecast: >-
+
     {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
     #EE82EE
     {%- elif index | float >= 8 -%}
@@ -106,7 +128,9 @@ variables:
         {%- if hour+1 != hours %},{%endif%}
       {%- endfor %}
     {%- endmacro %}
+    {%- if show_forecast %}
     {{ draw_uv_forecast_h(22,7,8,0) }}
+    {%- endif %}
   payload: >-
     {% set hum = states('sensor.weatherflow_relative_humidity') %}
 
