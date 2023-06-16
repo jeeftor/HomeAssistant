@@ -1,5 +1,8 @@
 #!/bin/bash
-
+#
+# Call this script with:
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
+#
 list_icon_directories() {
     OWNER="jeeftor"
     REPO="HomeAssistant"

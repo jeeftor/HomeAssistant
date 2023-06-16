@@ -13,6 +13,15 @@ This archive contains various blueprints for Home Assistant
 | Hue Remote | Simulate the state change feature of a hue remote in software | [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fhue-dimmer.yaml) |
 | Climate Alert | Get an actionable notification if somebody sets the heat too high | [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fclimate_alert.yaml) |
 
+# Getting the ICONS
+
+
+```bash
+# If you runt his script it will help upload icons to your Awtrix device
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
+ ```
+
+
 ### Innoveli
 
 It was built out with the following devices:
