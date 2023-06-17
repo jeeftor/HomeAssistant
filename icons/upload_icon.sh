@@ -11,21 +11,28 @@ NC='\033[0m' # No Color
 # Call this script with:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
 #
+
 list_icon_directories() {
-    OWNER="jeeftor"
-    REPO="HomeAssistant"
-    BRANCH="master"
-    DIRECTORY="icons"
+    if ! command -v jq >/dev/null 2>&1; then
+        echo -e "${RED}Error: 'jq' is not installed. Please install 'jq' to run this script.${NC}"
+        exit 1
+    fi
+
+    local OWNER="jeeftor"
+    local REPO="HomeAssistant"
+    local BRANCH="master"
+    local DIRECTORY="icons"
 
     # Make the API request to list the directory contents
-    response=$(curl -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
+    local response=$(curl -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
 
     # Extract directory names
-    directories=($(echo "$response" | jq -r '.[] | select(.type == "dir") | .name'))
+    local directories=($(echo "$response" | jq -r '.[] | select(.type == "dir") | .name'))
 
     # Return the list of directories
     echo "${directories[@]}"
 }
+
 list_icons() {
     local OWNER="jeeftor"
     local REPO="HomeAssistant"
@@ -70,17 +77,21 @@ upload_icon() {
 
     if verify_gif "$TEMP_FILE"; then
         curl -X POST -F "file=@$TEMP_FILE;filename=/ICONS/$FILE_NAME" "$URL"
-        echo -e "${GREEN}Uploaded icon:${NC} $FILE_NAME${NC}"
+        echo -e "  ${GREEN}Uploaded icon:${NC} $FILE_NAME${NC}"
     else
         echo -e "${RED}Error: File $FILE_NAME does not appear to be a valid GIF file.${NC}"
-        echo -e ${RED}Try yourself with:${NC} curl -L -s -X GET "$GIF_FILE" -o $TEMP_FILE
+        echo -e "${RED}Try yourself with:${NC} curl -L -s -X GET \"$GIF_FILE\" -o $TEMP_FILE"
     fi
 
     rm -f "$TEMP_FILE"
 }
 
-# Prompt for IP address
-read -p "Enter the IP address: " IP_ADDRESS
+# Prompt for IP address if not provided as command-line argument
+if [ -z "$1" ]; then
+    read -p "Enter the IP address: " IP_ADDRESS
+else
+    IP_ADDRESS="$1"
+fi
 
 # Validate IP address format
 if ! [[ $IP_ADDRESS =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -105,7 +116,7 @@ done
 # Example usage
 ICONS=($(list_icons "$DIRECTORY_NAME"))
 
-echo -e "${YELLOW}Downloading icons:${NC}"
+echo -e "${YELLOW}Downloading icons...${NC}"
 
 for ICON_URL in "${ICONS[@]}"; do
     ICON_NAME=$(basename "$ICON_URL")
