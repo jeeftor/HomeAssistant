@@ -41,28 +41,151 @@ blueprint:
             - binary_sensor
             - input_boolean
     open_text:
-      name: Device Opened Message
+      name: 📝 Device Opened Message
       description: Text to be displayed when an open event occurs
       selector:
         text:
       default: "open"
+    is_open_text:
+      name: 📝 Device Remained Open Message
+      selector:
+        text:
+      default: ""
+      description: >
+        The default is to show just an icon and a time-display - if you add text here it will be appended to the message
+    close_text:
+      name: 📝 Device Closed Message
+      description: This text will be displayed along with the close icon
+      selector:
+        text:
+      default: "close"
+    error_text:
+      name: 📝 Error Message
+      description: Display text with error icon
+      selector:
+        text:
+      default: "error"
     open_sound:
-      name: Open Notification Sound
+      name: 🔊️ Open Notification Sound
       description: >-
-        A sound to play when the door opens. I personally use:
+        An RTTL sound to play when the door opens. I personally use:
 
             short:d=4,o=5,b=100:16e6
 
         Leave this blank if you don't want a sound
       selector:
         text:
-      default: ""
-    open_icon:
-      name: Open icon
+      default: "short:d=4,o=5,b=100:16e6"
+    close_sound:
+      name: 🔊️ Closing sound for Notification
+      description: >
+        An RTTL to play upon door closing. I personally use:
+
+            two_short:d=4,o=5,b=100:16e6,16e6
+
+        Leave this blank if you don't want a sound
+      selector:
+        text:
+      default: "two_short:d=4,o=5,b=100:16e6,16e6"
+    error_sound:
+      name: 🔊️ Sound for initial error Notification
+      description: >
+        An RTTL Sound to play upon door closing. I personally use:
+
+            sms:d=4,o=5,b=45:32d,32g#,32d,32f,32c#,32e
+
+        Leave this blank if you don't want a sound
+      selector:
+        text:
+      default: "sms:d=4,o=5,b=45:32d,32g#,32d,32f,32c#,32e"
+
+    icon_set:
+      name: Icon Set
+      description: >-
+        Here you can select from various "pre-defined" icon sets. Alternatively you can select `custom` if you wish to use your own icons. 
+
+        The quickest way to get these icons is to run this script:
+
+            bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
+
+        This script will download the icon set you desire from GitHub and upload it to your clock
+
+        Icon's themselves are named:
+
+        ### Front Door
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53266_icon_thumb.gif?v=3)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53267_icon_thumb.gif?v=4)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53265_icon_thumb.gif?v=3)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53268_icon_thumb.gif?v=3)
+
+        `front_door_open.gif`,`front_door_is_open.gif` `front_door_close.gif` `front_door_error.gif` 
+
+        ### Sliding Door
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53195_icon_thumb.gif?v=3)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53201_icon_thumb.png?v=1)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53197_icon_thumb.gif?v=3)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53227_icon_thumb.gif?v=1)
+
+        `sliding_door_open.gif`,`sliding_door_is_open.gif` `sliding_door_close.gif` `sliding_door_error.gif` 
+
+        ### Shed/House
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53234_icon_thumb.gif?v=3)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53236_icon_thumb.gif?v=1)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53235_icon_thumb.gif?v=3)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53237_icon_thumb.gif?v=3)
+
+        `house_shed_open.gif`,`house_shed_is_open.gif` `house_shed_close.gif` `house_shed_error.gif` 
+
+
+        ### Window
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/23103_icon_thumb.gif?v=1)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53290_icon_thumb.gif?v=1)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/23104_icon_thumb.gif?v=1)
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53291_icon_thumb.gif?v=1)
+
+        `window_open.gif`,`window_is_open.gif` `window_close.gif` `window_error.gif` 
+
+
+        ### Garage
+        ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor/garage_open.gif)
+        ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor/garage_is_open.gif)
+        ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor/garage_close.gif)
+        ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor/garage_error.gif)
+
+        `garage_open.gif`,`garage_is_open.gif` `garage_close.gif` `garage_error.gif`
+
+
+        # CUSTOM ICONS BELOW
+
+        The icon settings below only will take effect if you've selected custom
+      selector:
+        select:
+          options:
+            - label: Front Door
+              value: front_door
+            - label: Sliding Door
+              value: sliding_door
+            - label: House Shed
+              value: house_shed
+            - label: Garage Door
+              value: garage
+            - label: Window
+              value: window
+            - label: Use Custom icons
+              value: custom
+
+      default: custom
+
+    custom_open_icon:
+      name: CUSTOM Open icon
       description: >
         Icon to show on Door Open notification (usually animated).
 
-        Here are some examples I use:
+        The Here are some examples I use:
 
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/53195_icon_thumb.gif?v=3) `53195` - Sliding Door Open
 
@@ -73,16 +196,10 @@ blueprint:
         - ![](https://developer.lametric.com/content/apps/icon_thumbs/23103_icon_thumb.gif?v=1) `23103` - Window opening
       selector:
         text:
-      default: "53195"
-    is_open_text:
-      name: Device Remained Open Message
-      selector:
-        text:
-      default: ""
-      description: >
-        The default is to show just an icon and a time-display - if you add text here it will be appended to the message
-    is_open_icon:
-      name: Is-Open Icon
+      default: "custom_open"
+
+    custom_is_open_icon:
+      name: CUSTOM Is-Open Icon
       description: >
         Icon to show for door remaining open
 
@@ -96,26 +213,10 @@ blueprint:
 
       selector:
         text:
-      default: "53201"
-    close_text:
-      name: Device Closed Message
-      description: This text will be displayed along with the close icon
-      selector:
-        text:
-      default: "close"
-    close_sound:
-      name: Closing sound for Notification
-      description: >
-        Sound to play upon door closing. I personally use:
+      default: "custom_is_open"
 
-            two_short:d=4,o=5,b=100:16e6,16e6
-
-        Leave this blank if you don't want a sound
-      selector:
-        text:
-      default: ""
-    close_icon:
-      name: Close icon
+    custom_close_icon:
+      name: CUSTOM Close icon
       description: >
         Icon to show for door closing notification
 
@@ -131,16 +232,10 @@ blueprint:
 
       selector:
         text:
-      default: "53197"
+      default: "custom_close"
 
-    error_text:
-      name: Error Message
-      description: Display text with error icon
-      selector:
-        text:
-      default: "error"
-    error_icon:
-      name: Error Icon
+    custom_error_icon:
+      name: CUSTOM Error Icon
       description: >
         Icon to show if the state of the sensor is an unknown state. If you are running an MQTT sensor this could
         indicate the server is down or the sensor dropped off your network.
@@ -157,18 +252,7 @@ blueprint:
 
       selector:
         text:
-      default: "53227"
-    error_sound:
-      name: Sound for initial error Notification
-      description: >
-        Sound to play upon door closing. I personally use:
-
-            sms:d=4,o=5,b=45:32d,32g#,32d,32f,32c#,32e
-
-        Leave this blank if you don't want a sound
-      selector:
-        text:
-      default: ""
+      default: "custom_error"
 
 mode: queued
 max: 10
@@ -186,7 +270,7 @@ variables:
       {%- set device=get_device_topic(device_id)|replace(' ','') %}
       {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ 'jeef_' ~ app_topic] %}
     {%- endfor %}
-    {{ ns.devices }}
+    {{ ns.devices | reject('match','unavailable') | list}}
   notification_topics: >-
     {%- macro get_device_topic(device_id) %}
     {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
@@ -197,7 +281,7 @@ variables:
       {%- set device=get_device_topic(device_id)|replace(' ','') %}
       {% set ns.devices = ns.devices + [ device ~ '/notify'] %}
     {%- endfor %}
-    {{ ns.devices }}
+    {{ ns.devices | reject('match','unavailable') | list}}
   trigger_sensor: !input trigger_sensor
   last_change_seconds: "{{ as_timestamp(now()) - as_timestamp(states[trigger_sensor].last_changed | default(0)) }}"
   last_changed_str: "{{relative_time(states[trigger_sensor].last_changed
@@ -208,39 +292,48 @@ variables:
     | replace('minutes','min')
     | replace('minute','min')}}"
 
-  open_icon: !input open_icon
+  icon_set: !input icon_set
+  custom_open_icon: !input custom_open_icon
+  custom_is_open_icon: !input custom_is_open_icon
+  custom_close_icon: !input custom_close_icon
+  custom_error_icon: !input custom_error_icon
+
+  # Open icon
+
+  open_icon: "{{iif(icon_set == 'custom', custom_open_icon ,icon_set ~ '_open')}}"
   open_text: !input open_text
   open_sound: !input open_sound
 
-  is_open_icon: !input is_open_icon
+  is_open_icon: "{{iif(icon_set == 'custom', custom_is_open_icon ,icon_set ~ '_is_open')}}"
   is_open_text: !input is_open_text
-
   # If we have open text then add it and a space to the end of the last_changed_str message
   is_open_message: "{{iif(open_text,last_changed_str,[last_changed_str,open_text]|join(' '))}}"
-  close_icon: !input close_icon
+
+  close_icon: "{{iif(icon_set == 'custom', custom_close_icon ,icon_set ~ '_close')}}"
   close_text: !input close_text
   close_sound: !input close_sound
-  error_icon: !input error_icon
+
+  error_icon: "{{iif(icon_set == 'custom', custom_error_icon ,icon_set ~ '_error')}}"
   error_text: !input error_text
   error_sound: !input error_sound
 
   open_payload: >-
-    {"text":"{{open_text}}", "icon":"{{open_icon}}", "sound":"{{open_sound}}"}
+    {"text":"{{open_text}}", "icon":"{{open_icon}}", "rtttl":"{{open_sound}}"}
   close_payload: >-
-    {"text":"{{close_text}}", "icon":"{{close_icon}}", "sound":"{{close_sound}}"}
+    {"text":"{{close_text}}", "icon":"{{close_icon}}", "rtttl":"{{close_sound}}"}
   is_open_payload: >-
     {"text": "{{is_open_message}}", "icon":"{{is_open_icon}}"}
   error_message_payload: >-
     {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00"}
   error_alert_payload: >-
-    {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00", "sound":"{{error_sound}}"}
+    {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00", "rtttl":"{{error_sound}}"}
 
 trigger_variables:
   trigger_sensor: !input trigger_sensor
 
 trigger:
   - platform: time_pattern
-    minutes: /1
+    seconds: /1
     id: time
   - platform: template
     id: opened
