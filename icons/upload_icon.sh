@@ -17,6 +17,11 @@ check_jq() {
 
 # List icon directories
 list_icon_directories() {
+    if ! command -v jq >/dev/null 2>&1; then
+        echo -e "${RED}Error: 'jq' is not installed. Please install 'jq' to run this script.${NC}"
+        exit 1
+    fi
+
     local OWNER="jeeftor"
     local REPO="HomeAssistant"
     local BRANCH="master"
@@ -26,8 +31,8 @@ list_icon_directories() {
     local response
     response=$(curl -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
 
-    # Extract directory names
-    local directories=($(echo "$response" | jq -r '.[] | select(.type == "dir") | .name'))
+    # Extract directory names into an array
+    mapfile -t directories < <(echo "$response" | jq -r '.[] | select(.type == "dir") | .name')
 
     # Return the list of directories
     echo "${directories[@]}"
@@ -44,8 +49,8 @@ list_icons() {
     local response
     response=$(curl -L -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
 
-    # Extract URLs of files with the .gif extension
-    local icons=($(echo "$response" | jq -r '.[] | select(.type == "file" and (.name | test("\\.gif$"))) | .download_url'))
+    # Extract URLs of files with the .gif extension into an array
+    mapfile -t icons < <(echo "$response" | jq -r '.[] | select(.type == "file" and (.name | test("\\.gif$"))) | .download_url')
 
     # Return the list of icons
     echo "${icons[@]}"
@@ -114,27 +119,16 @@ main() {
 
     # List icon directories
     echo -e "${GREEN}Available icon directories:${NC}"
-    directories=($(list_icon_directories))
+    list_icon_directories
 
     # Prompt for directory selection
     PS3="Select a directory: "
-    select DIRECTORY_NAME in "${directories[@]}"; do
-        if [[ -n $DIRECTORY_NAME ]]; then
-            break
-        else
-            echo -e "${YELLOW}Invalid selection. Please try again.${NC}"
-        fi
-    done
+    read -rp "Enter your selection: " selection
 
     # Example usage
-    ICONS=($(list_icons "$DIRECTORY_NAME"))
-
-    echo -e "${YELLOW}Downloading icons...${NC}"
-
-    for ICON_URL in "${ICONS[@]}"; do
-        ICON_NAME=$(basename "$ICON_URL")
-
-        upload_icon "$IP_ADDRESS" "$DIRECTORY_NAME/$ICON_NAME" "$ICON_NAME"
+    list_icons "$selection" | while IFS= read -r icon; do
+        ICON_NAME=$(basename "$icon")
+        upload_icon "$IP_ADDRESS" "$selection/$ICON_NAME" "$ICON_NAME"
     done
 }
 
