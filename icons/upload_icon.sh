@@ -7,25 +7,24 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-#
-# Call this script with:
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
-# bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)" -- IP_ADDRESS_OF_CLOCK
-#
-
-list_icon_directories() {
+# Check if 'jq' is installed
+check_jq() {
     if ! command -v jq >/dev/null 2>&1; then
         echo -e "${RED}Error: 'jq' is not installed. Please install 'jq' to run this script.${NC}"
         exit 1
     fi
+}
 
+# List icon directories
+list_icon_directories() {
     local OWNER="jeeftor"
     local REPO="HomeAssistant"
     local BRANCH="master"
     local DIRECTORY="icons"
 
     # Make the API request to list the directory contents
-    local response=$(curl -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
+    local response
+    response=$(curl -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
 
     # Extract directory names
     local directories=($(echo "$response" | jq -r '.[] | select(.type == "dir") | .name'))
@@ -34,6 +33,7 @@ list_icon_directories() {
     echo "${directories[@]}"
 }
 
+# List icons within a directory
 list_icons() {
     local OWNER="jeeftor"
     local REPO="HomeAssistant"
@@ -41,7 +41,8 @@ list_icons() {
     local DIRECTORY="icons/$1"
 
     # Make the API request to list the directory contents
-    local response=$(curl -L -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
+    local response
+    response=$(curl -L -s "https://api.github.com/repos/$OWNER/$REPO/contents/$DIRECTORY?ref=$BRANCH")
 
     # Extract URLs of files with the .gif extension
     local icons=($(echo "$response" | jq -r '.[] | select(.type == "file" and (.name | test("\\.gif$"))) | .download_url'))
@@ -50,6 +51,7 @@ list_icons() {
     echo "${icons[@]}"
 }
 
+# Verify if a file is a valid GIF
 verify_gif() {
     local FILE_NAME="$1"
 
@@ -62,13 +64,13 @@ verify_gif() {
     fi
 }
 
+# Upload an icon to a clock device
 upload_icon() {
     local IP_ADDRESS="$1"
     local ICON_NAME="$2"
     local FILE_NAME="$3"
 
     URL="http://$IP_ADDRESS/edit"
-
     TEMP_FILE=".$FILE_NAME"
 
     BASE_URL="https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/"
@@ -78,7 +80,7 @@ upload_icon() {
 
     if verify_gif "$TEMP_FILE"; then
         curl -X POST -F "file=@$TEMP_FILE;filename=/ICONS/$FILE_NAME" "$URL"
-        echo -e "  ${GREEN}Uploaded icon:${NC} $FILE_NAME${NC}"
+        echo -e "${GREEN}Uploaded icon:${NC} $FILE_NAME${NC}"
     else
         echo -e "${RED}Error: File $FILE_NAME does not appear to be a valid GIF file.${NC}"
         echo -e "${RED}Try yourself with:${NC} curl -L -s -X GET \"$GIF_FILE\" -o $TEMP_FILE"
@@ -87,40 +89,54 @@ upload_icon() {
     rm -f "$TEMP_FILE"
 }
 
-# Prompt for IP address if not provided as command-line argument
-if [ -z "$1" ]; then
-    read -p "Enter the IP address: " IP_ADDRESS
-else
-    IP_ADDRESS="$1"
-fi
-
-# Validate IP address format
-if ! [[ $IP_ADDRESS =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo -e "${RED}Error: Invalid IP address format.${NC}"
-    exit 1
-fi
-
-# List icon directories
-echo -e "${GREEN}Available icon directories:${NC}"
-directories=($(list_icon_directories))
-
-# Prompt for directory selection
-PS3="Select a directory: "
-select DIRECTORY_NAME in "${directories[@]}"; do
-    if [[ -n $DIRECTORY_NAME ]]; then
-        break
+# Prompt for IP address if not provided as a command-line argument
+prompt_ip_address() {
+    if [ -z "$1" ]; then
+        read -rp "Enter the IP address: " IP_ADDRESS
     else
-        echo -e "${YELLOW}Invalid selection. Please try again.${NC}"
+        IP_ADDRESS="$1"
     fi
-done
 
-# Example usage
-ICONS=($(list_icons "$DIRECTORY_NAME"))
+    # Validate IP address format
+    if ! [[ $IP_ADDRESS =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo -e "${RED}Error: Invalid IP address format.${NC}"
+        exit 1
+    fi
+}
 
-echo -e "${YELLOW}Downloading icons...${NC}"
+# Main script logic
+main() {
+    # Check if 'jq' is installed
+    check_jq
 
-for ICON_URL in "${ICONS[@]}"; do
-    ICON_NAME=$(basename "$ICON_URL")
+    # Prompt for IP address
+    prompt_ip_address "$1"
 
-    upload_icon "$IP_ADDRESS" "$DIRECTORY_NAME/$ICON_NAME" "$ICON_NAME"
-done
+    # List icon directories
+    echo -e "${GREEN}Available icon directories:${NC}"
+    directories=($(list_icon_directories))
+
+    # Prompt for directory selection
+    PS3="Select a directory: "
+    select DIRECTORY_NAME in "${directories[@]}"; do
+        if [[ -n $DIRECTORY_NAME ]]; then
+            break
+        else
+            echo -e "${YELLOW}Invalid selection. Please try again.${NC}"
+        fi
+    done
+
+    # Example usage
+    ICONS=($(list_icons "$DIRECTORY_NAME"))
+
+    echo -e "${YELLOW}Downloading icons...${NC}"
+
+    for ICON_URL in "${ICONS[@]}"; do
+        ICON_NAME=$(basename "$ICON_URL")
+
+        upload_icon "$IP_ADDRESS" "$DIRECTORY_NAME/$ICON_NAME" "$ICON_NAME"
+    done
+}
+
+# Execute the main script
+main "$@"
