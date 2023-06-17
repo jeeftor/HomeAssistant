@@ -3,6 +3,19 @@ blueprint:
   name: AWTRIX HVAC 🥵 🌡️ 🥶
   description: >
     Monitor the status of your HVAC system with Awtrix
+
+
+    This automation requires two icons to exist (you can select the name below).
+
+
+    If you want to use the icons I developed run:
+      
+      ![](https://developer.lametric.com/content/apps/icon_thumbs/53270_icon_thumb.gif?v=2)![](https://developer.lametric.com/content/apps/icon_thumbs/53271_icon_thumb.gif?v=2)
+
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
+
+    And select the IP_ADDRESS of your awtrix device and `hvac` as the icon set to upload
+
   domain: automation
   input:
     awtrix:
@@ -97,27 +110,3 @@ action:
             topic: "{{ repeat.item }}"
             payload: >
               {{payload}}
-
-#
-
-#     {%- if is_running and mode == 'heat' }
-#     {
-#       "icon":"heat",
-#       "text": [
-#         {"t":"{{temp_current_floor}}", "c": "#ffffff"},
-#         {"t":">", "c": "#9c9d97"},
-#         {"t":"{{target_temp}}", "c": "#ffffff"}
-#       ]
-#     }
-# {%- endif %}
-
-# {%- if is_running and mode == 'cool' %}
-#     {
-#       "icon":"cool",
-#       "text": [
-#         {"t":"{{temp_current_ceil}}", "c": "#ffffff"},
-#         {"t":">", "c": "#9c9d97"},
-#         {"t":"{{target_temp}}", "c": "#ffffff"}
-#       ]
-#     }
-# {%- endif %}
