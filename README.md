@@ -19,7 +19,12 @@ This archive contains various blueprints for Home Assistant
 ```bash
 # If you runt his script it will help upload icons to your Awtrix device
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
- ```
+
+# Or you can run 
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)" -- IP_ADDRESS_OF_CLOCK
+```
+
+
 
 
 ### Innoveli

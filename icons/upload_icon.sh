@@ -10,6 +10,7 @@ NC='\033[0m' # No Color
 #
 # Call this script with:
 # bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
+# bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)" -- IP_ADDRESS_OF_CLOCK
 #
 
 list_icon_directories() {
