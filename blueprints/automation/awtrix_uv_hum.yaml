@@ -129,7 +129,7 @@ variables:
       {%- endfor %}
     {%- endmacro %}
     {%- if show_forecast %}
-    {{ draw_uv_forecast_h(22,7,8,0) }}
+    {{ draw_uv_forecast_h(22,7,8,0) }},
     {%- endif %}
   payload: >-
     {% set hum = states('sensor.weatherflow_relative_humidity') %}
@@ -178,7 +178,7 @@ variables:
         {"dt":[6,2,"{{hum}}%"]},
         {{draw_u(19,1,"#00ffaa")}},
         {{draw_v(19,5,"#00ffaa")}},
-        {{uv_forecast}},
+        {{uv_forecast}}
         {{draw_uv()}}
       ]
     }
