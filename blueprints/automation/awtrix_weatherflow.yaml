@@ -3,8 +3,8 @@ blueprint:
   name: AWTRIX Weather ⛈️ + Forecast + 🌕️
   description: >
 
-
     This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
+
 
 
     ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/docs/weather.gif)
@@ -60,10 +60,13 @@ blueprint:
           - moonset
           - moon_altitude
 
-    ### Flow Icons
+    ### Icons
 
-    The simple way to get the icons is through the flow page: [https://flows.blueforcer.de/flow/6RpwLAMGOlZ4](https://flows.blueforcer.de/flow/6RpwLAMGOlZ4) and click the *Upload assets to Awtrix Light*
+    You can call my custom script which will prompt you for an Awtrix device and then upload the required icons:
+      
+      (If you have windows I don't know if this will work)
 
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)"
 
     _This blueprint ~will~ may be updated as new features_
 
@@ -836,7 +839,8 @@ variables:
           0,	0,	54970,	54970,	10565,	10565,	0,	0
           ]]}
         {%- endif  %}
-        {%- if phase == 'new'  %}
+        {%- if phase == 'new_moon'  %}
+        
           {"db":[{{x}},{{y}},8,8,[
           0,	0,	10565,	10565,	10565,	10565,	0,	0,
           0,	10565,	10565,	10565,	10565,	10565,	10565,	0,
@@ -885,7 +889,7 @@ variables:
           ]]}
         {%- endif  %}
 
-    {% endmacro %}        
+    {% endmacro %}  
     {{iif(weather == 'clear-night' and use_moon_clear_night, draw_moon(moon_phase,0,0), draw_moon(moon_phase,23,0))}}
 
   payload: >
@@ -961,7 +965,7 @@ variables:
     {
     "draw": [
       {{draw_forecast_lines(8,hours_to_show,0)}},
-      {"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}      
+      {"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}
       {% if show_moon %}, {{moon_data}} {% endif %}
     ],
     "icon": "{{icon}}",
