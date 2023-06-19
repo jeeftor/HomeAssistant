@@ -5,6 +5,8 @@ blueprint:
     This blueprint is designed to monitor the status of a door (or any other contact sensor) 
     displaying alerts when the status changeas as well as tracking the time a specific door has been open.
 
+    It works with **binary_sensor** and **cover** entities.. (I think)
+
     Generally it will track 4 different states:
 
     - `opened`: When the door opens
@@ -40,6 +42,7 @@ blueprint:
           domain:
             - binary_sensor
             - input_boolean
+            - cover
     open_text:
       name: 📝 Device Opened Message
       description: Text to be displayed when an open event occurs
@@ -337,12 +340,12 @@ trigger:
     id: time
   - platform: template
     id: opened
-    value_template: "{{ states(trigger_sensor) == 'on' }}"
+    value_template: "{{ states(trigger_sensor) in ['on', 'open'] }}"
   - platform: template
-    value_template: "{{ states(trigger_sensor) == 'off' }}"
+    value_template: "{{ states(trigger_sensor) in ['closed','off'] }}"
     id: closed
   - platform: template
-    value_template: "{{ states(trigger_sensor) not in ['off','on'] }}"
+    value_template: "{{ states(trigger_sensor) not in ['off','on', 'open','closed'] }}"
     id: error
 
 condition: []
@@ -354,9 +357,10 @@ action:
               - condition: trigger
                 id: time
               - condition: template
-                value_template: "{{ states(trigger_sensor) == 'on' }}"
+                value_template: "{{ states(trigger_sensor) in ['on', 'open'] }}"
               - condition: template
                 value_template: "{{ last_change_seconds > 60 }}"
+
         sequence:
           - repeat:
               for_each: "{{ message_topics }}"
