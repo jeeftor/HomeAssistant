@@ -102,6 +102,20 @@ blueprint:
         text:
       default: "sms:d=4,o=5,b=45:32d,32g#,32d,32f,32c#,32e"
 
+    quiet_time_start:
+      name: Quiet time
+      description: >
+        Quiet time start/stop
+      selector:
+        time:
+      default: "00:00:00"
+    quiet_time_end:
+      name: Quiet time
+      description: >
+        Quiet time start/stop
+      selector:
+        time:
+      default: "00:00:00"
     icon_set:
       name: Icon Set
       description: >-
@@ -261,6 +275,9 @@ mode: queued
 max: 10
 
 variables:
+  qt_start: !input quiet_time_start
+  qt_end: !input quiet_time_end
+  mute: "{{ iif(qt_start > qt_end, not (today_at(qt_end) < now() < today_at(qt_start)),today_at(qt_start) < now() < today_at(qt_end)) }}"
   device_ids: !input awtrix
   app_topic: !input app_name
   message_topics: >-
@@ -321,15 +338,15 @@ variables:
   error_sound: !input error_sound
 
   open_payload: >-
-    {"text":"{{open_text}}", "icon":"{{open_icon}}", "rtttl":"{{open_sound}}"}
+    {"text":"{{open_text}}", "icon":"{{open_icon}}", "rtttl":"{{iif(mute,'',open_sound)}}"}
   close_payload: >-
-    {"text":"{{close_text}}", "icon":"{{close_icon}}", "rtttl":"{{close_sound}}"}
+    {"text":"{{close_text}}", "icon":"{{close_icon}}", "rtttl":"{{iif(mute,'',close_sound)}}"}
   is_open_payload: >-
     {"text": "{{is_open_message}}", "icon":"{{is_open_icon}}"}
   error_message_payload: >-
     {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00"}
   error_alert_payload: >-
-    {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00", "rtttl":"{{error_sound}}"}
+    {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00", "rtttl":"{{iif(mute,'',error_sound)}}"}
 
 trigger_variables:
   trigger_sensor: !input trigger_sensor
