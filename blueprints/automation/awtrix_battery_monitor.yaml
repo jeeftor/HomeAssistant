@@ -39,8 +39,7 @@ blueprint:
         entity:
           multiple: false
           filter:
-            - integration: mobile_app
-              device_class: battery
+            - device_class: battery
         # multiple: false
     message_text:
       name: Text to Display
