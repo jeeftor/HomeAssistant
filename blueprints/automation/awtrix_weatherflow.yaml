@@ -709,7 +709,7 @@ variables:
   sun_event_icon: >-
     {{ iif(sun_next_event == 'sunrise', icon_sunrise, icon_sunset) }}
   sun_event_payload: >-
-    {"icon":"{{sun_event_icon}}", "text":{{sun_next_str}}, "duration": {{message_duration_riseset}}}
+    {"icon":"{{sun_event_icon}}", "text":"{{sun_next_str}}", "duration": {{message_duration_riseset}}}
   sun_payload: >-
     {%- if show_sun_rise_set %}
     {{ iif(sun_event_minute_threshold >= sun_min_until_next_event, sun_event_payload, "{}") }}
