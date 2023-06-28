@@ -1,35 +1,27 @@
 import sys
 from PIL import Image
 import json
-
 class RGBMaker:
     def __init__(self, filename):
         self.filename = filename
         self.width = None
         self.height = None
 
-    def make_rgb(self, background_value=0):
-        # Open the GIF image
-        try:
-            gif_image = Image.open(self.filename)
-        except IOError:
-            print(f"Error: Unable to open '{self.filename}'. Please make sure it is a valid GIF image.")
-            return []
+    def frame_to_rgb(self, frame, background_value=0):
+        # Convert the frame image to RGBA mode
+        rgba_frame = frame.convert("RGBA")
 
-        # Convert the image to RGBA mode to access the alpha channel
-        rgba_image = gif_image.convert("RGBA")
-
-        # Get the dimensions of the image
-        self.width, self.height = rgba_image.size
+        # Get the dimensions of the frame
+        width, height = rgba_frame.size
 
         # Create an empty list to store the RGB565 pixel values
         rgb565_data = []
 
-        # Iterate over each pixel in the image
-        for y in range(self.height):
-            for x in range(self.width):
-                # Get the RGBA values of the pixel
-                r, g, b, a = rgba_image.getpixel((x, y))
+        # Iterate over each pixel in the frame
+        for y in range(height):
+            for x in range(width):
+                # Get the RGBA values of the pixel in the frame
+                r, g, b, a = rgba_frame.getpixel((x, y))
 
                 # Replace the background color with the provided background value
                 if a == 0:
@@ -43,6 +35,48 @@ class RGBMaker:
 
         return rgb565_data
 
+    def clean_frame(self, frame):
+        # Clean the frame to ensure all frames have the same size and black background
+        cleaned_frame = Image.new("RGBA", frame.size, (0, 0, 0))
+        cleaned_frame.paste(frame, (0, 0), frame)
+        return cleaned_frame
+
+    def make_rgb(self, background_value=0):
+        # Open the GIF image
+        try:
+            gif_image = Image.open(self.filename)
+        except IOError:
+            print(f"Error: Unable to open '{self.filename}'. Please make sure it is a valid GIF image.")
+            return []
+
+
+        # Create an empty list to store the RGB565 pixel values
+        rgb565_data_frames = []
+
+        self.width, self.height = gif_image.size
+
+        # Iterate over each frame in the GIF image
+        try:
+            while True:
+                # Get the current frame
+                frame = gif_image.convert("RGBA")
+
+                # Clean the frame to ensure all frames have the same size and black background
+                cleaned_frame = self.clean_frame(frame)
+
+                # Convert the cleaned frame to RGB565 format
+                rgb565_data = self.frame_to_rgb(cleaned_frame, background_value)
+
+                # Append the current frame's RGB565 data to the list of frames
+                rgb565_data_frames.append(rgb565_data)
+
+                # Move to the next frame
+                gif_image.seek(gif_image.tell() + 1)
+
+        except EOFError:
+            pass
+
+        return rgb565_data_frames
     def print_color_palette_from_data(self, data, background_value=0):
         print("Color Palette From Data:")
         unique_colors = set(data)  # Get unique colors
@@ -158,8 +192,6 @@ class RGBMaker:
             ]
         }
         return test_data
-
-
 def main():
     if len(sys.argv) < 2:
         print("Please provide the filenames of the GIF images.")
@@ -171,32 +203,31 @@ def main():
         rgb_maker = RGBMaker(gif_filename)
 
         # Call the make_rgb function with the GIF filename
-        rgb565_data = rgb_maker.make_rgb()
+        rgb565_data_frames = rgb_maker.make_rgb()
 
-        if not rgb565_data:
+        if not rgb565_data_frames:
             continue
 
-        # Print the color palette and RGB565 data for each GIF
+        frame_count = len(rgb565_data_frames)
+
+        # Print the color palette and RGB565 data for each frame
         print(f"--- Color Palette and RGB565 Data for {gif_filename} ---")
-        rgb_maker.print_color_palette_from_data(rgb565_data)
-        rgb_maker.print_ascii_swatches(rgb565_data)
 
-        print(f"--- Raw Data---")
-        rgb_maker.print_rgb565_data(rgb565_data)
+        for frame_index, rgb565_data in enumerate(rgb565_data_frames):
+            print(f"Frame {frame_index + 1} of {frame_count}:")
+            rgb_maker.print_color_palette_from_data(rgb565_data)
+            rgb_maker.print_ascii_swatches(rgb565_data)
 
-        # Generate the test data dictionary
-        test_data = rgb_maker.generate_test_data(rgb565_data)
-        test_data_json = json.dumps(test_data)
+            print(f"--- Raw Data for Frame {frame_index + 1} of {frame_count} ---")
+            rgb_maker.print_rgb565_data(rgb565_data)
 
-        print("--- Test Data JSON ---")
-        print("Send this data to /api/notify to test the results:")
-        print(test_data_json)
-        print("\n")
+            # Generate the test data dictionary for the frame
+            test_data = rgb_maker.generate_test_data(rgb565_data)
+            test_data_json = json.dumps(test_data)
 
-        curl_example = f'curl -X POST -H "Content-Type: application/json" -d \'{test_data_json}\' http://192.168.1.118/api/notify'
-        print("Example: Send the data using curl:")
-        print(curl_example)
-        print("\n")
+            print("--- Test Data JSON for Frame {frame_index + 1} of {frame_count} ---")
+            print(test_data_json)
+            print()
 
 
 if __name__ == "__main__":
