@@ -1,6 +1,6 @@
 import sys
 from PIL import Image
-
+import json
 
 class RGBMaker:
     def __init__(self, filename):
@@ -10,7 +10,11 @@ class RGBMaker:
 
     def make_rgb(self, background_value=0):
         # Open the GIF image
-        gif_image = Image.open(self.filename)
+        try:
+            gif_image = Image.open(self.filename)
+        except IOError:
+            print(f"Error: Unable to open '{self.filename}'. Please make sure it is a valid GIF image.")
+            return []
 
         # Convert the image to RGBA mode to access the alpha channel
         rgba_image = gif_image.convert("RGBA")
@@ -38,12 +42,16 @@ class RGBMaker:
                 rgb565_data.append(rgb565)
 
         return rgb565_data
+
     def print_color_palette_from_data(self, data, background_value=0):
         print("Color Palette From Data:")
         unique_colors = set(data)  # Get unique colors
 
         # Add the background value to the unique colors set
         unique_colors.add(background_value)
+
+        # Count the occurrences of each color
+        color_counts = {color: data.count(color) for color in unique_colors}
 
         for rgb565 in unique_colors:
             # Extract the RGB components from RGB565 format
@@ -58,14 +66,19 @@ class RGBMaker:
             swatch_col = "\033[48;2;{};{};{}m  \033[0m".format(r, g, b)
             rgb565_col = "{:<7}".format(rgb565)
             hex_col = "{:<9}".format(hex_value)
+            count_col = "{:<5}".format(color_counts[rgb565])
 
-            # Print the color information and ASCII swatch
-            print("Swatch: {} RGB565: {} Hex: {}".format(swatch_col, rgb565_col, hex_col))
+            # Print the color information, count, and ASCII swatch
+            print("Swatch: {} RGB565: {} Hex: {} Count: {}".format(swatch_col, rgb565_col, hex_col, count_col))
         print("\n")
 
     def print_color_palette_from_image(self):
         # Open the image file
-        image = Image.open(self.filename)
+        try:
+            image = Image.open(self.filename)
+        except IOError:
+            print(f"Error: Unable to open '{self.filename}'. Please make sure it is a valid image.")
+            return
 
         # Check if the image has a color palette
         if image.mode == "P":
@@ -132,27 +145,58 @@ class RGBMaker:
                 row_str += ","
             print(row_str)
 
+    def generate_test_data(self, rgb565_data):
+        test_data = {
+            "stack": False,
+            "draw": [
+                {
+                    "db": [
+                        0, 0, self.width, self.height,
+                        rgb565_data
+                    ]
+                }
+            ]
+        }
+        return test_data
+
 
 def main():
     if len(sys.argv) < 2:
-        print("Please provide the filename of the GIF image.")
+        print("Please provide the filenames of the GIF images.")
         sys.exit(1)
 
-    gif_filename = sys.argv[1]
-    rgb_maker = RGBMaker(gif_filename)
+    gif_filenames = sys.argv[1:]
 
-    # Call the make_rgb function with the GIF filename
-    rgb565_data = rgb_maker.make_rgb()
+    for gif_filename in gif_filenames:
+        rgb_maker = RGBMaker(gif_filename)
 
-    # Replace specific values if desired
-    # replace_values = {19967: 19967, 65535: 65535, 8223: 8223}
-    # for old_value, new_value in replace_values.items():
-    #     rgb565_data = rgb_maker.replace(rgb565_data, old_value, new_value)
+        # Call the make_rgb function with the GIF filename
+        rgb565_data = rgb_maker.make_rgb()
 
-    rgb_maker.print_color_palette_from_data(rgb565_data)
-    # rgb_maker.print_color_palette_from_image()
-    rgb_maker.print_ascii_swatches(rgb565_data)
-    rgb_maker.print_rgb565_data(rgb565_data)
+        if not rgb565_data:
+            continue
+
+        # Print the color palette and RGB565 data for each GIF
+        print(f"--- Color Palette and RGB565 Data for {gif_filename} ---")
+        rgb_maker.print_color_palette_from_data(rgb565_data)
+        rgb_maker.print_ascii_swatches(rgb565_data)
+
+        print(f"--- Raw Data---")
+        rgb_maker.print_rgb565_data(rgb565_data)
+
+        # Generate the test data dictionary
+        test_data = rgb_maker.generate_test_data(rgb565_data)
+        test_data_json = json.dumps(test_data)
+
+        print("--- Test Data JSON ---")
+        print("Send this data to /api/notify to test the results:")
+        print(test_data_json)
+        print("\n")
+
+        curl_example = f'curl -X POST -H "Content-Type: application/json" -d \'{test_data_json}\' http://192.168.1.118/api/notify'
+        print("Example: Send the data using curl:")
+        print(curl_example)
+        print("\n")
 
 
 if __name__ == "__main__":
