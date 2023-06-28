@@ -184,17 +184,6 @@ class RGBMaker:
 
         max_value_length = len(str(max(rgb565_data)))  # Calculate the maximum length of RGB565 values
 
-        color_escapes = {
-            0b00000: '\033[30m',  # Black
-            0b00001: '\033[34m',  # Blue
-            0b00100: '\033[32m',  # Green
-            0b00101: '\033[36m',  # Cyan
-            0b10000: '\033[31m',  # Red
-            0b10001: '\033[35m',  # Magenta
-            0b10100: '\033[33m',  # Yellow
-            0b11111: '\033[37m'  # White
-        }
-
         for i in range(0, len(rgb565_data), self.width):
             row = rgb565_data[i: i + self.width]
             row_str = ""
@@ -208,13 +197,18 @@ class RGBMaker:
                     g = ((value & 0b0000011111000000) >> 5) << 2
                     b = (value & 0b0000000000111110) << 3
 
-                    # Determine the text color based on the RGB565 value
-                    if value == 0:
-                        color_escape = color_escapes[0]
-                    else:
-                        color_escape = "\033[38;2;{};{};{}m".format(r, g, b)
+                    # Convert RGB565 to RGB888 format
+                    r = (r | (r >> 5)) & 0xFF
+                    g = (g | (g >> 6)) & 0xFF
+                    b = (b | (b >> 5)) & 0xFF
 
-                    value_str = "{}{}{}".format(color_escape, value_str, '\033[0m')
+                    # Determine the ANSI color code based on the RGB components
+                    ansi_color_code = 16 + (36 * (r // 51)) + (6 * (g // 51)) + (b // 51)
+
+                    # Create the color escape sequence
+                    color_escape = f"\033[38;5;{ansi_color_code}m"
+
+                    value_str = f"{color_escape}{value_str}\033[0m"
 
                 row_str += value_str + ", "
 
