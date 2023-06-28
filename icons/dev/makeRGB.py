@@ -167,14 +167,59 @@ class RGBMaker:
 
             print()  # Move to the next line after printing each row
 
-    def print_rgb565_data(self, rgb565_data):
+    # def print_rgb565_data(self, rgb565_data):
+    #     print("RGB565 Data ({}x{}):".format(self.width, self.height))
+    #
+    #     max_value_length = len(str(max(rgb565_data)))  # Calculate the maximum length of RGB565 values
+    #
+    #     for i in range(0, len(rgb565_data), self.width):
+    #         row = rgb565_data[i: i + self.width]
+    #         row_str = ", ".join(["{:{}}".format(value, max_value_length) for value in row])
+    #         if i < len(rgb565_data) - self.width:
+    #             row_str += ","
+    #         print(row_str)
+
+    def print_rgb565_data(self, rgb565_data, colors=True):
         print("RGB565 Data ({}x{}):".format(self.width, self.height))
 
         max_value_length = len(str(max(rgb565_data)))  # Calculate the maximum length of RGB565 values
 
+        color_escapes = {
+            0b00000: '\033[30m',  # Black
+            0b00001: '\033[34m',  # Blue
+            0b00100: '\033[32m',  # Green
+            0b00101: '\033[36m',  # Cyan
+            0b10000: '\033[31m',  # Red
+            0b10001: '\033[35m',  # Magenta
+            0b10100: '\033[33m',  # Yellow
+            0b11111: '\033[37m'  # White
+        }
+
         for i in range(0, len(rgb565_data), self.width):
             row = rgb565_data[i: i + self.width]
-            row_str = ", ".join(["{:{}}".format(value, max_value_length) for value in row])
+            row_str = ""
+
+            for value in row:
+                value_str = "{:{}}".format(value, max_value_length)
+
+                if colors:
+                    # Extract the RGB components from RGB565 format
+                    r = ((value & 0b1111100000000000) >> 11) << 3
+                    g = ((value & 0b0000011111000000) >> 5) << 2
+                    b = (value & 0b0000000000111110) << 3
+
+                    # Determine the text color based on the RGB565 value
+                    if value == 0:
+                        color_escape = color_escapes[0]
+                    else:
+                        color_escape = "\033[38;2;{};{};{}m".format(r, g, b)
+
+                    value_str = "{}{}{}".format(color_escape, value_str, '\033[0m')
+
+                row_str += value_str + ", "
+
+            row_str = row_str.rstrip(", ")
+
             if i < len(rgb565_data) - self.width:
                 row_str += ","
             print(row_str)
@@ -219,7 +264,7 @@ def main():
             rgb_maker.print_ascii_swatches(rgb565_data)
 
             print(f"--- Raw Data for Frame {frame_index + 1} of {frame_count} ---")
-            rgb_maker.print_rgb565_data(rgb565_data)
+            rgb_maker.print_rgb565_data(rgb565_data, colors=True)
 
             # Generate the test data dictionary for the frame
             test_data = rgb_maker.generate_test_data(rgb565_data)
