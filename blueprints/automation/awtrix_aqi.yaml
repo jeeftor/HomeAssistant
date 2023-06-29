@@ -1,0 +1,187 @@
+---
+blueprint:
+  name: AWTRIX AQI IQAir/AirNow.gov 🌬️
+  description: >
+    Blueprint to show Air Quality Forecast + Air Quality from AirNow.gov + IQAir
+
+
+    In my limited research IQAir offers a scrapable AQI forecast, but primarily focused on 2.5PPM air quality. AirNow.gov has a worse update rate but it offers an Ozone forecast - so it may be useful to have both sensors up
+
+    In order to use this blueprint you'll have to install a HACS component (see below) to scrape the IQAir webpage
+
+
+    ### Requirements
+
+    - [HACS Multiscraper](https://github.com/danieldotnl/ha-multiscrape)
+
+    - [AirNow - or equivalent](https://www.home-assistant.io/integrations/airnow/)
+
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: true
+    airnow_sensor:
+      name: Airnow.Gov AQI
+      description: IQAir and Airnow have different readings so we use both
+      selector:
+        entity:
+          domain:
+            - sensor
+    iqair_sensor:
+      name: IQAir Custom multi-scrape sensor
+      description: >-
+        You need to configure a custom sensor with the HACS Multiscrape plugin:
+
+        Replace `<<IQAIR_URL>>` with correct webpage you want to scrape
+
+
+        - name: IQAir Scraper
+            resource: <<IQAIR_URL>>
+            scan_interval: 600
+            log_response: true
+            sensor:
+              - unique_id: iq_air_aqi
+                name: IQAir Now
+                icon: >-
+                  {%- if value | int  < 50 %}
+                  mdi:gauge-empty
+                  {%- elif value | int < 100 %}
+                  mdi:gauge-low
+                  {%- elif value | int < 200 %}
+                  mdi:gauge
+                  {%- else %}
+                  mdi:gauge-full
+                  {%-endif%}
+                select_list: ".pollutant-level-wrapper b"
+                value_template: "{{value.split(',')[4] | int }}"
+                select: "forecast"
+                attributes:
+                  - name: Main Pollutant
+                    select: ".aqi-overview-detail__main-pollution-table td:last-child"
+                  - name: Raw Data
+                    select_list: ".pollutant-level-wrapper b"
+                  - name: History
+                    select_list: ".pollutant-level-wrapper b"
+                    value_template: "{{value.split(',')[0:4] | reverse | map('int') | list  }}"
+                  - name: Forecast
+                    select_list: ".pollutant-level-wrapper b"
+                    value_template: "{{value.split(',')[5:] | map('int') | list}}"
+      selector:
+        entity:
+          domain:
+            - sensor
+
+    app_name:
+      name: Awtrix Applicaiton name
+      description: This is the app name listed in the MQTT topic - it should be unique
+      selector:
+        text:
+      default: iq_air
+
+mode: restart
+variables:
+  device_ids: !input awtrix
+  app_topic: !input app_name
+  aqi_icon: >-
+    {"db":[0,0,8,8,[
+      19967,19967,0,0,0,0,0,0,19967,0,19967,0,65535,0,0,0,19967,19967,19967,65535,0,65535,0,8223,19967,0,19967,65535,0,65535,0,8223,19967,0,19967,65535,0,65535,0,8223,0,0,0,0,65535,65535,65535,8223,0,0,0,0,0,0,0,8223,2016,65504,64800,63488,38931,28672,0,0]
+      ]}
+
+  # Generate history stuff
+  sensor_prefix: "iqair"
+  iqair_sensor: !input iqair_sensor
+  airnow_sensor: !input airnow_sensor
+
+  iq_air_aqi: "{{ states('sensor.iq_air_aqi',-1) | int }}"
+  iq_air_forecast_1: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[0] | int}}"
+  iq_air_forecast_2: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[1] | int}}"
+  iq_air_forecast_3: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[2] | int}}"
+  iq_air_forecast_4: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[3] | int}}"
+  iq_air_forecast_5: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[4] | int}}"
+  airnow_aqi: "{{ states(airnow_sensor) }}"
+
+  forecast: >-
+    {%- macro aqi_line(x, value) %}
+    {"dl":
+    {%- if value >= 301 -%}
+    [{{x}},7,{{x+1}},7,"#750000"]
+    {%- elif value >= 201 -%}
+    [{{x}},7,{{x+1}},7,"#9a009a"]
+      {%- elif value >= 151 -%}
+    [{{x}},7,{{x+1}},7,"#ff0000"]
+      {%- elif value >= 101 -%}
+    [{{x}},7,{{x+1}},7,"#ffa500"]
+      {%- elif value >= 51 -%}
+    [{{x}},7,{{x+1}},7,"#FFFF00"]
+      {%- else -%}
+    [{{x}},7,{{x+1}},7,"#00FF00"]
+      {%- endif -%}
+      }
+      {%- endmacro %}
+
+      {{aqi_line(10,iq_air_aqi)}},
+       {{aqi_line(13, iq_air_forecast_1) }},
+       {{aqi_line(16, iq_air_forecast_2) }},
+       {{aqi_line(19, iq_air_forecast_3) }},
+       {{aqi_line(22, iq_air_forecast_4) }},
+       {{aqi_line(25, iq_air_forecast_5) }}
+
+  payload: >-
+    {%- macro get_index_color(value) %}
+    {%- if value >= 301 %}
+        {{- "#750000" -}}
+    {%- elif value >= 201 %}
+        {{- "#9a009a" -}}
+    {%- elif value >= 151 %}
+        {{- "#ff0000" -}}
+    {%- elif value >= 101 %}
+        {{- "#ffa500" -}}
+    {%- elif value >= 51 %}
+        {{- "#FFFF00" -}}
+    {%- else %}
+        {{- "#00FF00" -}}
+    {%- endif %}
+    {%- endmacro %}
+
+    {%- set iqair = iq_air_aqi %}
+    {%- set airnow = airnow_aqi %}
+
+    {"draw": [
+      {{aqi_icon}},
+      {"dt": [9,1,"{{iqair}}","{{get_index_color(iqair)}}"]},
+      {"dt": [21,1,"{{airnow}}","{{get_index_color(airnow)}}"]},
+      {{forecast}}
+      ]}
+  message_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ 'jeef_' ~ app_topic] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list}}
+trigger:
+  - platform: time_pattern
+    seconds: /5
+condition: []
+action:
+  - repeat:
+      for_each: "{{ message_topics }}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item }}"
+            payload: >
+              {{payload}}
