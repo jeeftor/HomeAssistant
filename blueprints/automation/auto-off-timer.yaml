@@ -1,0 +1,29 @@
+blueprint:
+  name: Switch auto-off timer
+  description: When a switch is turned on - auto turn off after a specified duration
+  domain: automation
+  input:
+    switch:
+      name: Switch
+      description: The switch/plug you want to have turn off after a set time
+      selector:
+        entity:
+          domain: switch
+    on_duration:
+      name: When turned on, how long before auot-turned off
+      selector:
+      number:
+        min: 1
+        max: 600
+
+
+trigger:
+  - platform: state
+    entity: !input switch
+    to: 'on'
+    for: 
+      minutes: !input on_duration
+
+action:
+  service: switch.turn_off
+  entity_id: !input switch

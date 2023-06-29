@@ -1,0 +1,195 @@
+---
+blueprint:
+  name: AWTRIX Pollen 🥀️
+  description: >
+    This blueprint will show current IQAir Pollen readings
+
+
+    ### Requirements
+
+    - [HACS Multiscraper](https://github.com/danieldotnl/ha-multiscrape)
+
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: true
+
+    pollen_sensor:
+      name: IQAir Pollen Scrape Sensor
+      description: >-
+        You need to configure a custom sensor with the HACS Multiscrape plugin:
+
+        Replace `<<IQAIR_URL>>` with correct webpage you want to scrape - on the general IQAir page you will find a pollen page usually linked:
+
+        Like: https://www.iqair.com/pollen/usa/colorado
+
+
+          - name: IQAir Pollen
+            scan_interval: 600
+            resource: <<IQAIR_URL>>
+            log_response: true
+            sensor:
+              - unique_id: pollen
+                select: ".pollen__header__global-index"
+                attributes:
+                  - name: Raw data
+                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                  - name: Current Tree
+                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                    value_template: "{{value.split(',')[1]}}"
+                  - name: Current Grass
+                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                    value_template: "{{value.split(',')[3]}}"
+                  - name: Current Weed
+                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                    value_template: "{{value.split(',')[5]}}"
+                  - name: Forecast today Overall
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                    value_template: "{{ value.split(',')[1] }}"
+                  - name: Forecast today Tree
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                    value_template: "{{ value.split(',')[2] }}"
+                  - name: Forecast today Grass
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                    value_template: "{{ value.split(',')[3] }}"
+                  - name: Forecast today Weed
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                    value_template: "{{ value.split(',')[4] }}"
+
+                  - name: Forecast tomorrow Overall
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                    value_template: "{{ value.split(',')[2] }}"
+                  - name: Forecast tomorrow Tree
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                    value_template: "{{ value.split(',')[3] }}"
+                  - name: Forecast tomorrow Grass
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                    value_template: "{{ value.split(',')[4] }}"
+                  - name: Forecast tomorrow Weed
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                    value_template: "{{ value.split(',')[5] }}"
+
+                  - name: Raw forecast
+                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                    value_template: "{{ value.split(',')[2:6] }}"
+      selector:
+        entity:
+          domain:
+            - sensor
+
+    app_name:
+      name: Awtrix Applicaiton name
+      description: This is the app name listed in the MQTT topic - it should be unique
+      selector:
+        text:
+      default: pollen
+
+mode: restart
+variables:
+  device_ids: !input awtrix
+  app_topic: !input app_name
+  message_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ 'jeef_' ~ app_topic] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list}}
+
+  # Generate history stuff
+  pollen_sensor: !input pollen_sensor
+
+  current_pollen: "{{states(pollen_sensor)}}"
+  current_weed: "{{ state_attr(pollen_sensor,'current_weed') }}"
+  current_tree: "{{ state_attr(pollen_sensor,'current_tree') }}"
+  current_grass: " {{ state_attr(pollen_sensor,'current_grass') }}"
+  current_pollen_color: '{{ current_pollen | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  current_weed_color: '{{ current_weed | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  current_tree_color: '{{ current_tree | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  current_grass_color: '{{ current_grass | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+
+  lines: >-
+
+  grass_sprite: >-
+    {%-  macro pollen_icon_grass_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 7, [0, 0, 0, 63313, 0, 0, 63313, 0, 0, 0, 0, 0, 0, 0, 0, 63313, 0, 63313, 0, 0, 0, 36833, 0, 9538, 0, 0, 9538, 0, 36833, 0, 9538, 9538, 36833, 9538, 9538]]}
+    {%- endmacro %}
+
+    {{pollen_icon_grass_0(23,0)}},
+    {"dl": [23,7,27,7,"{{current_grass_color}}"]}
+
+  weed_sprite: >-
+    {%-  macro pollen_icon_weed_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 4, [63313, 0, 36833, 0, 0, 0, 0, 36833, 0, 63313, 0, 9538, 33476, 9538, 0, 0, 0, 33476, 0, 0]]}
+    {%- endmacro %}
+
+    {{pollen_icon_weed_0(16,3)}},
+    {"dl": [16,7,20,7,"{{current_weed_color}}"]}
+
+  tree_sprite: >-
+    {%-  macro pollen_icon_tree_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 7, [0, 0, 0, 63313, 0, 0, 0, 63313, 9538, 9538, 0, 0, 9538, 9538, 9538, 63313, 9538, 63313, 9538, 9538, 9538, 9538, 9538, 0, 0, 9538, 63313, 9538, 0, 0, 0, 0, 33476, 0, 63313, 0, 63313, 0, 33476, 63313, 0, 0]]}
+    {%- endmacro %}
+    {{pollen_icon_tree_0(9,0)}},
+    {"dl": [9,7,14,7,"{{current_tree_color}}"]}
+
+  pollen_sprite: >-
+    {%-  macro pollen_flower_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 8, 8, [65504, 0, 0, 0, 65504, 0, 0, 65504, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65504, 0, 0, 65504, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65504, 0, 65504, 0, 65535, 0, 65535, 0, 0, 0, 0, 0, 0, 65504, 0, 0, 0, 65504, 0, 0, 65535, 0, 65535, 0, 0, 0, 0, 0, 0, 0, 0, 7556]]}
+    {%- endmacro %}
+
+    {{pollen_flower_0(0,0)}}
+
+  payload: >-
+    {%- macro get_index_color(value) %}
+    {%- if value >= 301 %}
+        {{- "#750000" -}}
+    {%- elif value >= 201 %}
+        {{- "#9a009a" -}}
+    {%- elif value >= 151 %}
+        {{- "#ff0000" -}}
+    {%- elif value >= 101 %}
+        {{- "#ffa500" -}}
+    {%- elif value >= 51 %}
+        {{- "#FFFF00" -}}
+    {%- else %}
+        {{- "#00FF00" -}}
+    {%- endif %}
+    {%- endmacro %}
+
+    {%- set iqair = iq_air_aqi %}
+    {%- set airnow = airnow_aqi %}
+
+    {"draw": [            
+
+      {{grass_sprite}},
+      {{weed_sprite}},
+      {{tree_sprite}}
+      ]}
+
+trigger:
+  - platform: time_pattern
+    seconds: /5
+condition: []
+action:
+  - repeat:
+      for_each: "{{ message_topics }}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item }}"
+            payload: >
+              {{payload}}
