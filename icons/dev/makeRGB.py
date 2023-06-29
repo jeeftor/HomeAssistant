@@ -1,11 +1,20 @@
 import sys
 from PIL import Image
 import json
+import os
+
+
 class RGBMaker:
     def __init__(self, filename):
         self.filename = filename
+        self.stripped_filename = self.strip_extension_and_path(filename)
         self.width = None
         self.height = None
+
+    def strip_extension_and_path(self, filename):
+        base_filename = os.path.basename(filename)
+        stripped_filename = os.path.splitext(base_filename)[0]
+        return stripped_filename
 
     def frame_to_rgb(self, frame, background_value=0):
         # Convert the frame image to RGBA mode
@@ -46,9 +55,10 @@ class RGBMaker:
         try:
             gif_image = Image.open(self.filename)
         except IOError:
-            print(f"Error: Unable to open '{self.filename}'. Please make sure it is a valid GIF image.")
+            print(
+                f"Error: Unable to open '{self.filename}'. Please make sure it is a valid GIF image."
+            )
             return []
-
 
         # Create an empty list to store the RGB565 pixel values
         rgb565_data_frames = []
@@ -77,6 +87,7 @@ class RGBMaker:
             pass
 
         return rgb565_data_frames
+
     def print_color_palette_from_data(self, data, background_value=0):
         print("Color Palette From Data:")
         unique_colors = set(data)  # Get unique colors
@@ -103,7 +114,11 @@ class RGBMaker:
             count_col = "{:<5}".format(color_counts[rgb565])
 
             # Print the color information, count, and ASCII swatch
-            print("Swatch: {} RGB565: {} Hex: {} Count: {}".format(swatch_col, rgb565_col, hex_col, count_col))
+            print(
+                "Swatch: {} RGB565: {} Hex: {} Count: {}".format(
+                    swatch_col, rgb565_col, hex_col, count_col
+                )
+            )
         print("\n")
 
     def print_color_palette_from_image(self):
@@ -111,7 +126,9 @@ class RGBMaker:
         try:
             image = Image.open(self.filename)
         except IOError:
-            print(f"Error: Unable to open '{self.filename}'. Please make sure it is a valid image.")
+            print(
+                f"Error: Unable to open '{self.filename}'. Please make sure it is a valid image."
+            )
             return
 
         # Check if the image has a color palette
@@ -125,7 +142,7 @@ class RGBMaker:
             # Iterate over the palette and extract unique colors
             for i in range(0, len(palette), 3):
                 # Get the RGB values
-                r, g, b = palette[i: i + 3]
+                r, g, b = palette[i : i + 3]
 
                 # Convert RGB to RGB565 format
                 rgb565 = ((r & 0b11111000) << 8) | ((g & 0b11111100) << 3) | (b >> 3)
@@ -182,10 +199,12 @@ class RGBMaker:
     def print_rgb565_data(self, rgb565_data, colors=True):
         print("RGB565 Data ({}x{}):".format(self.width, self.height))
 
-        max_value_length = len(str(max(rgb565_data)))  # Calculate the maximum length of RGB565 values
+        max_value_length = len(
+            str(max(rgb565_data))
+        )  # Calculate the maximum length of RGB565 values
 
         for i in range(0, len(rgb565_data), self.width):
-            row = rgb565_data[i: i + self.width]
+            row = rgb565_data[i : i + self.width]
             row_str = ""
 
             for value in row:
@@ -203,7 +222,9 @@ class RGBMaker:
                     b = (b | (b >> 5)) & 0xFF
 
                     # Determine the ANSI color code based on the RGB components
-                    ansi_color_code = 16 + (36 * (r // 51)) + (6 * (g // 51)) + (b // 51)
+                    ansi_color_code = (
+                        16 + (36 * (r // 51)) + (6 * (g // 51)) + (b // 51)
+                    )
 
                     # Create the color escape sequence
                     color_escape = f"\033[38;5;{ansi_color_code}m"
@@ -221,16 +242,29 @@ class RGBMaker:
     def generate_test_data(self, rgb565_data):
         test_data = {
             "stack": False,
-            "draw": [
-                {
-                    "db": [
-                        0, 0, self.width, self.height,
-                        rgb565_data
-                    ]
-                }
-            ]
+            "draw": [{"db": [0, 0, self.width, self.height, rgb565_data]}],
         }
         return test_data
+
+    def generate_macro(self, rgb565_data, frame_index):
+        macro_name = f"{self.stripped_filename}_{frame_index}"
+
+        header = "{%-  macro " + macro_name + "(x,y) %}"
+
+        body = (
+            '{"db": [{{x}}, {{y}}, '
+            + str(self.width)
+            + ", "
+            + str(self.height)
+            + ", "
+            + str(rgb565_data)
+            + "]}"
+        )
+        footer = "{%- endmacro %}"
+
+        return f"{header}\n{body}\n{footer}\n"
+
+
 def main():
     if len(sys.argv) < 2:
         print("Please provide the filenames of the GIF images.")
@@ -263,6 +297,13 @@ def main():
             # Generate the test data dictionary for the frame
             test_data = rgb_maker.generate_test_data(rgb565_data)
             test_data_json = json.dumps(test_data)
+
+            macro = rgb_maker.generate_macro(
+                rgb565_data=rgb565_data, frame_index=frame_index
+            )
+
+            print("\n--- Drawing Macro Frame {frame_index + 1} of {frame_count} ---")
+            print(macro)
 
             print("--- Test Data JSON for Frame {frame_index + 1} of {frame_count} ---")
             print(test_data_json)
