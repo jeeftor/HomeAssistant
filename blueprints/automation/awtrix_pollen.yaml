@@ -2,8 +2,9 @@
 blueprint:
   name: AWTRIX Pollen 🥀️
   description: >
-    This blueprint will show current IQAir Pollen readings
+    This blueprint will show current & forecasted IQAir Pollen readings
 
+    ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollenPreview.gif)
 
     It uses different icons depending on pollen levels:
 
