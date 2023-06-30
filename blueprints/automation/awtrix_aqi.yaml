@@ -16,6 +16,42 @@ blueprint:
 
     - [AirNow - or equivalent](https://www.home-assistant.io/integrations/airnow/)
 
+    - IQAir Sensor: (example for chicago below)
+
+
+          multiscrape:
+            - name: IQAir Scraper
+              resource: https://www.iqair.com/usa/illinois/chicago
+              scan_interval: 600
+              log_response: true
+              sensor:
+                - unique_id: iq_air_aqi
+                  name: IQAir MultiScrape
+                  icon: >-
+                    {%- if value | int  < 50 %}
+                    mdi:gauge-empty
+                    {%- elif value | int < 100 %}
+                    mdi:gauge-low
+                    {%- elif value | int < 200 %}
+                    mdi:gauge
+                    {%- else %}
+                    mdi:gauge-full
+                    {%-endif%}
+                  select_list: ".pollutant-level-wrapper b"
+                  value_template: "{{value.split(',')[4] | int }}"
+                  select: "forecast"
+                  attributes:
+                    - name: Main Pollutant
+                      select: ".aqi-overview-detail__main-pollution-table td:last-child"
+                    - name: Raw Data
+                      select_list: ".pollutant-level-wrapper b"
+                    - name: History
+                      select_list: ".pollutant-level-wrapper b"
+                      value_template: "{{value.split(',')[0:4] | reverse | map('int') | list  }}"
+                    - name: Forecast
+                      select_list: ".pollutant-level-wrapper b"
+                      value_template: "{{value.split(',')[5:] | map('int') | list}}"
+
   domain: automation
   input:
     awtrix:
