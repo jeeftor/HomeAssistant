@@ -155,8 +155,22 @@ variables:
 
     {"draw": [
       {{aqi_icon}},
+      {%- if iqair < 10 %}
+      {"dt": [12,1,"{{iqair}}","{{get_index_color(iqair)}}"]},
+      {%- elif iqair < 100 -%}
+      {"dt": [10,1,"{{iqair}}","{{get_index_color(iqair)}}"]},
+      {%- else %}
       {"dt": [9,1,"{{iqair}}","{{get_index_color(iqair)}}"]},
+      {%- endif %}
+
+      {%- if airnow < 10 %}
       {"dt": [21,1,"{{airnow}}","{{get_index_color(airnow)}}"]},
+      {%- elif airnow < 100 -%}
+      {"dt": [21,1,"{{airnow}}","{{get_index_color(airnow)}}"]},
+      {%- else %}
+      {"dt": [21,1,"{{airnow}}","{{get_index_color(airnow)}}"]},
+      {%- endif %}
+
       {{forecast}}
       ]}
   message_topics: >-
