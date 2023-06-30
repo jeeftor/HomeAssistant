@@ -5,9 +5,79 @@ blueprint:
     This blueprint will show current IQAir Pollen readings
 
 
+    It uses different icons depending on pollen levels:
+
+    ### Overall Pollen Levels:
+
+      | Icon For | None | Low | Moderate | High | Very High | 
+      | ---- | ---- | --- | -------- | ---- | --------- |
+      | Overall Pollen |![Frame 0](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_flower_frame_0.svg "Frame 0") |![Frame 1](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_flower_frame_1.svg "Frame 1") |![Frame 2](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_flower_frame_2.svg "Frame 2") |![Frame 3](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_flower_frame_3.svg "Frame 3") |![Frame 4](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_flower_frame_4.svg "Frame 4") |
+      | Trees |![Frame 0](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_tree_frame_0.svg "Frame 0")|![Frame 1](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_tree_frame_1.svg "Frame 1")|![Frame 2](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_tree_frame_2.svg "Frame 2")|![Frame 3](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_tree_frame_3.svg "Frame 3")|![Frame 4](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_tree_frame_4.svg "Frame 4")|
+      | Weeds |![Frame 0](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_weed_frame_0.svg "Frame 0")|![Frame 1](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_weed_frame_1.svg "Frame 1")|![Frame 2](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_weed_frame_2.svg "Frame 2")|![Frame 3](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_weed_frame_3.svg "Frame 3")|![Frame 4](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_weed_frame_4.svg "Frame 4")|
+      | Grass |![Frame 0](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_grass_frame_0.svg "Frame 0")|![Frame 1](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_grass_frame_1.svg "Frame 1")|![Frame 2](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_grass_frame_2.svg "Frame 2")|![Frame 3](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_grass_frame_3.svg "Frame 3")|![Frame 4](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollen/icon_grass_frame_4.svg "Frame 4")|
+
+
+      As well as color bars showing the level of pollen today as well as tomorrows forecast.
+
+
     ### Requirements
 
     - [HACS Multiscraper](https://github.com/danieldotnl/ha-multiscrape)
+
+      Once you've installed multi-scrape you will need to conifugre a scrap sensor:
+
+
+
+          multiscrape:
+            # Debug with: https://try.jsoup.org/
+            - name: IQAir Pollen
+              scan_interval: 600
+              resource: https://www.iqair.com/pollen/usa/chicago
+              log_response: true
+              sensor:
+                - unique_id: pollen
+                  select: ".pollen__header__global-index"
+                  attributes:
+                    - name: Raw data
+                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                    - name: Current Tree
+                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                      value_template: "{{value.split(',')[1]}}"
+                    - name: Current Grass
+                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                      value_template: "{{value.split(',')[3]}}"
+                    - name: Current Weed
+                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
+                      value_template: "{{value.split(',')[5]}}"
+                    - name: Forecast today Overall
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                      value_template: "{{ value.split(',')[1] }}"
+                    - name: Forecast today Tree
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                      value_template: "{{ value.split(',')[2] }}"
+                    - name: Forecast today Grass
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                      value_template: "{{ value.split(',')[3] }}"
+                    - name: Forecast today Weed
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
+                      value_template: "{{ value.split(',')[4] }}"
+
+                    - name: Forecast tomorrow Overall
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                      value_template: "{{ value.split(',')[2] }}"
+                    - name: Forecast tomorrow Tree
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                      value_template: "{{ value.split(',')[3] }}"
+                    - name: Forecast tomorrow Grass
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                      value_template: "{{ value.split(',')[4] }}"
+                    - name: Forecast tomorrow Weed
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                      value_template: "{{ value.split(',')[5] }}"
+
+                    - name: Raw forecast
+                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
+                      value_template: "{{ value.split(',')[2:6] }}"
 
   domain: automation
   input:
@@ -24,61 +94,7 @@ blueprint:
     pollen_sensor:
       name: IQAir Pollen Scrape Sensor
       description: >-
-        You need to configure a custom sensor with the HACS Multiscrape plugin:
-
-        Replace `<<IQAIR_URL>>` with correct webpage you want to scrape - on the general IQAir page you will find a pollen page usually linked:
-
-        Like: https://www.iqair.com/pollen/usa/colorado
-
-
-          - name: IQAir Pollen
-            scan_interval: 600
-            resource: <<IQAIR_URL>>
-            log_response: true
-            sensor:
-              - unique_id: pollen
-                select: ".pollen__header__global-index"
-                attributes:
-                  - name: Raw data
-                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                  - name: Current Tree
-                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                    value_template: "{{value.split(',')[1]}}"
-                  - name: Current Grass
-                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                    value_template: "{{value.split(',')[3]}}"
-                  - name: Current Weed
-                    select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                    value_template: "{{value.split(',')[5]}}"
-                  - name: Forecast today Overall
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                    value_template: "{{ value.split(',')[1] }}"
-                  - name: Forecast today Tree
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                    value_template: "{{ value.split(',')[2] }}"
-                  - name: Forecast today Grass
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                    value_template: "{{ value.split(',')[3] }}"
-                  - name: Forecast today Weed
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                    value_template: "{{ value.split(',')[4] }}"
-
-                  - name: Forecast tomorrow Overall
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                    value_template: "{{ value.split(',')[2] }}"
-                  - name: Forecast tomorrow Tree
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                    value_template: "{{ value.split(',')[3] }}"
-                  - name: Forecast tomorrow Grass
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                    value_template: "{{ value.split(',')[4] }}"
-                  - name: Forecast tomorrow Weed
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                    value_template: "{{ value.split(',')[5] }}"
-
-                  - name: Raw forecast
-                    select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                    value_template: "{{ value.split(',')[2:6] }}"
+        This is the custom pollen scraping sensor you've developed...
       selector:
         entity:
           domain:
@@ -115,41 +131,220 @@ variables:
   current_tree: "{{ state_attr(pollen_sensor,'current_tree') }}"
   current_grass: " {{ state_attr(pollen_sensor,'current_grass') }}"
   current_pollen_color: '{{ current_pollen | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  current_pollen_color_rgb565: >-
+    {%- macro hex_to_rgb565(hex_color) %}
+    {%- set red = hex_color[1:3] | int(base=16) %}
+    {%- set green = hex_color[3:5] | int(base=16) %}
+    {%- set blue = hex_color[5:7] | int(base=16) %}
+
+    {%- set shift_red = red // 8 %}
+    {%- set shift_green = green // 4 %}
+    {%- set shift_blue = blue // 8 %}
+
+    {%- set rgb565 = shift_red * 2048 + shift_green * 32 + shift_blue %}
+    {{ rgb565 }}
+    {%- endmacro %}
+    {{ hex_to_rgb565(current_pollen_color)}}
+
   current_weed_color: '{{ current_weed | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
   current_tree_color: '{{ current_tree | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
   current_grass_color: '{{ current_grass | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
 
+  current_index: '{{ current_pollen | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+
+  current_weed_index: '{{ current_weed | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+  current_tree_index: '{{ current_tree | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+  current_grass_index: '{{ current_grass | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+
+  forecast_pollen: "{{state_attr(pollen_sensor, 'forecast_tomorrow_overall')}}"
+  forecast_weed: "{{ state_attr(pollen_sensor,'forecast_tomorrow_weed') }}"
+  forecast_tree: "{{ state_attr(pollen_sensor,'forecast_tomorrow_tree') }}"
+  forecast_grass: " {{ state_attr(pollen_sensor,'forecast_tomorrow_grass') }}"
+  forecast_pollen_color: '{{ forecast_pollen | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  forecast_weed_color: '{{ forecast_weed | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  forecast_tree_color: '{{ forecast_tree | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  forecast_grass_color: '{{ forecast_grass | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+
   lines: >-
 
   grass_sprite: >-
-    {%-  macro pollen_icon_grass_0(x,y) %}
-    {"db": [{{x}}, {{y}}, 5, 7, [0, 0, 0, 63313, 0, 0, 63313, 0, 0, 0, 0, 0, 0, 0, 0, 63313, 0, 63313, 0, 0, 0, 36833, 0, 9538, 0, 0, 9538, 0, 36833, 0, 9538, 9538, 36833, 9538, 9538]]}
+    {%-  macro icon_grass_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 6, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36833, 0, 9538, 0, 0, 9538, 0, 36833, 0, 9538, 9538, 36833, 9538, 9538]]}
     {%- endmacro %}
 
-    {{pollen_icon_grass_0(23,0)}},
-    {"dl": [23,7,27,7,"{{current_grass_color}}"]}
+    {%-  macro icon_grass_1(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 6, [0, 63313, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36833, 0, 9538, 0, 0, 9538, 0, 36833, 0, 9538, 9538, 36833, 9538, 9538]]}
+    {%- endmacro %}
+
+    {%-  macro icon_grass_2(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 6, [0, 0, 0, 63313, 0, 0, 0, 0, 0, 0, 63313, 0, 0, 0, 0, 0, 36833, 0, 9538, 0, 0, 9538, 0, 36833, 0, 9538, 9538, 36833, 9538, 9538]]}
+    {%- endmacro %}
+
+    {%-  macro icon_grass_3(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 6, [0, 63313, 0, 0, 0, 0, 0, 0, 63313, 0, 63313, 0, 0, 0, 0, 0, 36833, 0, 9538, 0, 0, 9538, 0, 36833, 0, 9538, 9538, 36833, 9538, 9538]]}
+    {%- endmacro %}
+
+    {%-  macro icon_grass_4(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 6, [0, 63313, 0, 0, 63313, 0, 0, 0, 0, 0, 63313, 0, 63313, 0, 0, 0, 36833, 0, 9538, 0, 0, 9538, 0, 36833, 0, 9538, 9538, 36833, 9538, 9538]]}
+    {%- endmacro %}
+
+
+    {%- set x = 23 %}
+    {%- set y = 0 %}
+    {%- if current_grass_index == 0 -%}
+    {{icon_grass_0(x,y)}},
+    {%- elif current_grass_index == 1 -%}
+    {{icon_grass_1(x,y)}},
+    {%- elif current_grass_index == 2 -%}
+    {{icon_grass_2(x,y)}},
+    {%- elif current_grass_index == 3 -%}
+    {{icon_grass_3(x,y)}},
+    {%- elif current_grass_index == 4 -%}
+    {{icon_grass_4(x,y)}},
+    {%- endif %}
+
+    {"dl": [23,6,27,6,"{{current_grass_color}}"]},
+    {"dl": [23,7,27,7,"{{forecast_grass_color}}"]}
 
   weed_sprite: >-
-    {%-  macro pollen_icon_weed_0(x,y) %}
+    {%-  macro icon_weed_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 4, [0, 0, 36833, 0, 0, 0, 0, 36833, 0, 0, 0, 9538, 33476, 9538, 0, 0, 0, 33476, 0, 0]]}
+    {%- endmacro %}
+
+    {%-  macro icon_weed_1(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 4, [0, 0, 36833, 0, 0, 0, 0, 36833, 0, 63313, 0, 9538, 33476, 9538, 0, 0, 0, 33476, 0, 0]]}
+    {%- endmacro %}
+
+    {%-  macro icon_weed_2(x,y) %}
     {"db": [{{x}}, {{y}}, 5, 4, [63313, 0, 36833, 0, 0, 0, 0, 36833, 0, 63313, 0, 9538, 33476, 9538, 0, 0, 0, 33476, 0, 0]]}
     {%- endmacro %}
 
-    {{pollen_icon_weed_0(16,3)}},
-    {"dl": [16,7,20,7,"{{current_weed_color}}"]}
+    {%-  macro icon_weed_3(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 4, [0, 0, 36833, 0, 63313, 63313, 0, 36833, 0, 0, 0, 9538, 33476, 9538, 0, 63313, 0, 33476, 0, 0]]}
+    {%- endmacro %}
+
+    {%-  macro icon_weed_4(x,y) %}
+    {"db": [{{x}}, {{y}}, 5, 4, [0, 0, 36833, 0, 63313, 63313, 0, 36833, 63313, 0, 0, 9538, 33476, 9538, 0, 63313, 0, 33476, 0, 0]]}
+    {%- endmacro %}
+
+    {%- set x = 17 %}
+    {%- set y = 2 %}
+    {%- if current_weed_index == 0 -%}
+    {{icon_weed_0(x,y)}},
+    {%- elif current_weed_index == 1 -%}
+    {{icon_weed_1(x,y)}},
+    {%- elif current_weed_index == 2 -%}
+    {{icon_weed_2(x,y)}},
+    {%- elif current_weed_index == 3 -%}
+    {{icon_weed_3(x,y)}},
+    {%- elif current_weed_index == 4 -%}
+    {{icon_weed_4(x,y)}},
+    {%- endif %}
+
+    {"dl": [17,6,21,6,"{{current_weed_color}}"]},
+    {"dl": [17,7,21,7,"{{forecast_weed_color}}"]}
 
   tree_sprite: >-
-    {%-  macro pollen_icon_tree_0(x,y) %}
-    {"db": [{{x}}, {{y}}, 6, 7, [0, 0, 0, 63313, 0, 0, 0, 63313, 9538, 9538, 0, 0, 9538, 9538, 9538, 63313, 9538, 63313, 9538, 9538, 9538, 9538, 9538, 0, 0, 9538, 63313, 9538, 0, 0, 0, 0, 33476, 0, 63313, 0, 63313, 0, 33476, 63313, 0, 0]]}
-    {%- endmacro %}
-    {{pollen_icon_tree_0(9,0)}},
-    {"dl": [9,7,14,7,"{{current_tree_color}}"]}
-
-  pollen_sprite: >-
-    {%-  macro pollen_flower_0(x,y) %}
-    {"db": [{{x}}, {{y}}, 8, 8, [65504, 0, 0, 0, 65504, 0, 0, 65504, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65504, 0, 0, 65504, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65504, 0, 65504, 0, 65535, 0, 65535, 0, 0, 0, 0, 0, 0, 65504, 0, 0, 0, 65504, 0, 0, 65535, 0, 65535, 0, 0, 0, 0, 0, 0, 0, 0, 7556]]}
+    {%-  macro icon_tree_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 7556, 9538, 9538, 0, 0, 9538, 9538, 9538, 7556, 9538, 0, 9538, 9538, 9538, 9538, 9538, 0, 0, 9538, 7556, 9538, 0, 0, 0, 0, 33476, 0, 0, 0, 0, 0, 33476, 0, 0, 0]]}
     {%- endmacro %}
 
-    {{pollen_flower_0(0,0)}}
+    {%-  macro icon_tree_1(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 7556, 9538, 9538, 0, 0, 9538, 63313, 9538, 7556, 9538, 0, 9538, 9538, 9538, 9538, 9538, 0, 0, 9538, 7556, 9538, 0, 0, 0, 0, 33476, 0, 63313, 0, 0, 0, 33476, 0, 0, 0]]}
+    {%- endmacro %}
+
+    {%-  macro icon_tree_2(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 63313, 9538, 9538, 0, 0, 9538, 9538, 9538, 63313, 9538, 63313, 9538, 9538, 9538, 9538, 9538, 0, 0, 9538, 7556, 9538, 0, 0, 0, 0, 33476, 0, 0, 0, 63313, 0, 33476, 0, 0, 0]]}
+    {%- endmacro %}
+
+    {%-  macro icon_tree_3(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 63313, 9538, 9538, 0, 0, 9538, 9538, 9538, 63313, 9538, 63313, 9538, 9538, 9538, 9538, 9538, 0, 0, 9538, 63313, 9538, 0, 0, 0, 0, 33476, 0, 63313, 0, 63313, 0, 33476, 0, 0, 0]]}
+    {%- endmacro %}
+
+    {%-  macro icon_tree_4(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 63313, 9538, 9538, 0, 0, 9538, 9538, 9538, 63313, 9538, 63313, 9538, 9538, 9538, 9538, 9538, 0, 0, 9538, 63313, 9538, 0, 0, 0, 0, 33476, 0, 63313, 0, 63313, 0, 33476, 63313, 0, 0]]}
+    {%- endmacro %}
+
+
+    {%- set x = 11 %}
+    {%- set y = 0 %}
+    {%- if current_tree_index == 0 -%}
+    {{icon_tree_0(x,y)}},
+    {%- elif current_tree_index == 1 -%}
+    {{icon_tree_1(x,y)}},
+    {%- elif current_tree_index == 2 -%}
+    {{icon_tree_2(x,y)}},
+    {%- elif current_tree_index == 3 -%}
+    {{icon_tree_3(x,y)}},
+    {%- elif current_tree_index == 4 -%}
+    {{icon_tree_4(x,y)}},
+    {%- endif %}
+
+    {"dl": [11,6,15,6,"{{current_tree_color}}"]},
+    {"dl": [11,7,15,7,"{{forecast_tree_color}}"]}
+
+  flower_sprite: >-
+
+    {%-  macro icon_flower_0(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 0, 0, 65535, 65504, 65535, 0, 0, 0, 0, 65535, 0, 0, 0, 0, 0, 0, 7556, 0, 0, 0, 0, 0, 0, 7556, 0, 0, 0, 0, 0, 7556]]}
+    {%- endmacro %}
+
+    {%-  macro icon_flower_1(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 0, 0, 65535, 65504, 65535, 0, 0, 0, 0, 65535, 0, 0, 0, 63313, 0, 0, 7556, 0, 0, 0, 0, 0, 0, 7556, 0, 0, 0, 0, 0, 7556]]}
+    {%- endmacro %}
+
+    {%-  macro icon_flower_2(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 0, 0, 65535, 65504, 65535, 0, 0, 63313, 0, 65535, 0, 0, 0, 0, 0, 0, 7556, 0, 0, 0, 63313, 0, 0, 7556, 0, 0, 0, 0, 0, 7556]]}
+    {%- endmacro %}
+
+    {%-  macro icon_flower_3(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 63313, 0, 65535, 65504, 65535, 0, 0, 0, 0, 65535, 0, 0, 0, 63313, 0, 0, 7556, 0, 0, 0, 0, 0, 0, 7556, 0, 0, 63313, 0, 0, 7556]]}
+    {%- endmacro %}
+
+    {%-  macro icon_flower_4(x,y) %}
+    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 63313, 0, 65535, 65504, 65535, 0, 0, 0, 0, 65535, 0, 63313, 0, 63313, 0, 0, 7556, 0, 63313, 0, 0, 0, 0, 7556, 0, 0, 63313, 0, 0, 7556]]}
+    {%- endmacro %}
+
+
+
+    {%- set x = 1 %}
+    {%- set y = 1 %}
+    {%- if current_index == 0 -%}
+    {{icon_flower_0(x,y)}},
+    {%- elif current_index == 1 -%}
+    {{icon_flower_1(x,y)}},
+    {%- elif current_index == 2 -%}
+    {{icon_flower_2(x,y)}},
+    {%- elif current_index == 3 -%}
+    {{icon_flower_3(x,y)}},
+    {%- elif current_index == 4 -%}
+    {{icon_flower_4(x,y)}},
+    {%- endif %}
+    {"dr": [0,0,8,8,"{{current_pollen_color}}"]},
+    {"dl": [8,0,8,7,"{{forecast_pollen_color}}"]}
+  # pollen_sprite_0: >-
+  #   {%-  macro flower_icon_0(x,y) %}
+  #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 65127, 0, 65535, 65504, 65535, 0, 0, 0, 0, 65535, 0, 0, 0, 65127, 0, 0, 7556, 0, 65127, 0, 0, 0, 0, 7556, 0, 0, 65127, 0, 0, 7556]]}
+  #   {%- endmacro %}
+
+  #   {{flower_icon_0(0,0)}},
+  #   {"dl": [0,6,8,6,"{{current_pollen_color}}"]},
+  #   {"dl": [0,7,8,7,"{{forecast_pollen_color}}"]}
+
+  # pollen_sprite_1: >-
+  #   {%-  macro flower_icon_0(x,y) %}
+  #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 65127, 0, 65535, 65504, 65535, 0, 0, 0, 0, 65535, 0, 0, 0, 65127, 0, 0, 7556, 0, 65127, 0, 0, 0, 0, 7556, 0, 0, 65127, 0, 0, 7556]]}
+  #   {%- endmacro %}
+
+  #   {{flower_icon_0(1,1)}},
+  #   {"dr": [0,0,8,8,"{{current_pollen_color}}"]},
+  #   {"dl": [8,0,8,7,"{{forecast_pollen_color}}"]}
+
+  # pollen_sprite_2: >-
+  #   {%-  macro index_0(x,y,color) %}
+  #   {"db": [{{x}}, {{y}}, 9, 5, [{{color}}, 0, {{color}}, {{color}}, 0, 0, {{color}}, 0, {{color}}, {{color}}, 0, {{color}}, 0, {{color}}, 0, {{color}}, 0, {{color}}, {{color}}, 0, {{color}}, 0, {{color}}, 0, 0, {{color}}, 0, {{color}}, 0, {{color}}, 0, {{color}}, 0, {{color}}, 0, {{color}}, {{color}}, 0, {{color}}, {{color}}, 0, 0, {{color}}, 0, {{color}}]]}
+  #   {%- endmacro %}
+  #   {{ index_0(1,1, current_pollen_color_rgb565)}}
 
   payload: >-
     {%- macro get_index_color(value) %}
@@ -175,7 +370,8 @@ variables:
 
       {{grass_sprite}},
       {{weed_sprite}},
-      {{tree_sprite}}
+      {{tree_sprite}}, 
+      {{flower_sprite}}
       ]}
 
 trigger:
