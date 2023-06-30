@@ -122,8 +122,7 @@ class GifConverter:
 
         print(f"Markdown file '{markdown_path}' has been created successfully.")
 
-    @staticmethod
-    def gif_to_html(gif_path: str, cell_size: int) -> None:
+    def gif_to_html(self) -> None:
         """
         Converts the GIF image to an HTML file.
 
@@ -132,10 +131,10 @@ class GifConverter:
             cell_size (int): Size of each cell in the HTML table.
         """
         # Open the GIF image
-        gif = Image.open(gif_path)
+        gif = Image.open(self.gif_path)
 
         # Generate the output HTML file path
-        output_path = gif_path.replace(".gif", ".html")
+        output_path = os.path.join(self.output_dir, f"{self.base_name}.html")
 
         # Create the HTML file
         with open(output_path, "w") as html_file:
@@ -153,7 +152,7 @@ class GifConverter:
                 width, height = frame.size
 
                 # Calculate the cell size
-                if cell_size is None:
+                if self.cell_size is None:
                     cell_size = GifConverter.DEFAULT_CELL_SIZE
 
                 # Write the frame number as the title
@@ -180,7 +179,7 @@ class GifConverter:
 
                         # Write the table cell with the updated pixel color
                         html_file.write(
-                            f'<td style="background-color:{hex_color};width:{cell_size}px;height:{cell_size}px;"> </td>\n'
+                            f'<td style="background-color:{hex_color};width:{self.cell_size}px;height:{self.cell_size}px;"> </td>\n'
                         )
 
                     # Write the table row end tag
@@ -215,7 +214,7 @@ def main() -> None:
     converter = GifConverter(gif_path, "output", cell_size)
     svg_file_paths = converter.convert_to_svg()
     converter.generate_markdown(svg_file_paths)
-    GifConverter.gif_to_html(gif_path, cell_size)
+    converter.gif_to_html()
 
 
 if __name__ == "__main__":
