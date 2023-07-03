@@ -779,7 +779,7 @@ variables:
 
   moon_data: >
     {%- macro draw_moon(phase,x=22,y=0) %}
-      {%- if phase == 'full'  %}
+      {%- if phase == 'full_moon'  %}
           {"db":[{{x}},{{y}},8,8,[
           0,	0,	54970,	54970,	54970,	54970,	0,	0,
           0,	54970,	54970,	63390,	63390,	54970,	54970,	0,
