@@ -5,7 +5,6 @@ from typing import List
 import asyncio
 import sys
 import os
-from datetime import timedelta
 
 
 class ScreenCapture:
@@ -14,20 +13,15 @@ class ScreenCapture:
         endpoint_url: str,
         width: int,
         height: int,
-        gif_filename: str,
         initial_duration: int,
-        max_duration: int,
     ) -> None:
         self.endpoint_url = endpoint_url
         self.width = width
         self.height = height
-        self.gif_filename = gif_filename
         self.initial_duration = initial_duration
-        self.max_duration = max_duration
-        self.gif_frames: List[Image.Image] = []
 
     async def capture_frame(self) -> None:
-        """Capture a frame from the endpoint and add it to the GIF frames."""
+        """Capture a frame from the endpoint and display a live preview."""
         frame_count = 0
         while True:
             response = requests.get(self.endpoint_url)
@@ -58,19 +52,17 @@ class ScreenCapture:
                     (self.width * 4, self.height * 4), resample=Image.NEAREST
                 )
 
-                # Add the current frame to the GIF
-                self.gif_frames.append(scaled_image)
-                frame_count += 1
-
                 # Print the frame count and live preview
                 self.print_live_preview(frame_count, image)
+
+                frame_count += 1
 
             await asyncio.sleep(0.05)  # Delay between frame captures
 
     def print_live_preview(self, frame_count: int, image: Image.Image) -> None:
         """Print the live preview of the image, clearing the console screen."""
         os.system("cls" if os.name == "nt" else "clear")
-        print(f"\033[32mFrames captured: {frame_count}\033[0m")
+        print(f"\033[32mFrames Shown: {frame_count}\033[0m")
         width, height = image.size
         for y in range(height):
             for x in range(width):
@@ -78,28 +70,6 @@ class ScreenCapture:
                 sys.stdout.write(f"\033[48;2;{r};{g};{b}m  \033[0m")
             sys.stdout.write("\n")
         print("\033[32mctrl+c to exit\033[0m")
-
-    def save_as_gif(self) -> None:
-        """Save the captured frames as a GIF and print the duration."""
-        if len(self.gif_frames) > 0:
-            # Calculate the total duration of the GIF
-            total_duration = len(self.gif_frames) * self.initial_duration
-
-            # Save the frames as a GIF
-            self.gif_frames[0].save(
-                self.gif_filename,
-                format="GIF",
-                append_images=self.gif_frames[1:],
-                save_all=True,
-                duration=self.initial_duration,
-                loop=0,
-            )
-
-            # Print the duration
-            duration_str = str(timedelta(milliseconds=total_duration))
-            print(f"\nGIF saved successfully. Duration: {duration_str}")
-        else:
-            print("\nNo frames captured. GIF not saved.")
 
 
 async def capture_loop(screen_capture: ScreenCapture) -> None:
@@ -132,20 +102,10 @@ def main() -> None:
     height = 8
 
     # GIF parameters
-    gif_filename = "output.gif"
     initial_duration = 50  # in milliseconds
-    max_duration = 500  # in milliseconds
 
     # Create ScreenCapture instance
-    screen_capture = ScreenCapture(
-        endpoint_url, width, height, gif_filename, initial_duration, max_duration
-    )
-
-    # Prompt user to start capturing
-    input("Press Enter to start capturing frames...")
-
-    # Start time
-    start_time = time.time()
+    screen_capture = ScreenCapture(endpoint_url, width, height, initial_duration)
 
     # Create the event loop
     loop = asyncio.get_event_loop()
@@ -156,15 +116,8 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
 
-    # Save frames as GIF
-    screen_capture.save_as_gif()
-
-    # End time
-    end_time = time.time()
-
-    # Calculate capture duration
-    capture_duration = end_time - start_time
-    print(f"Capture duration: {capture_duration:.2f} seconds")
+    # Close the event loop
+    loop.close()
 
 
 if __name__ == "__main__":
