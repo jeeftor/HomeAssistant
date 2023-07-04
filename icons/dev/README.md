@@ -1,5 +1,10 @@
 What is here? (good question).
 
+
+- `ansiPreview.py` Mirrors an Awtrix screen to the CLI
+
+[![asciicast](https://asciinema.org/a/uiB03VYXNelbMZBWEBRPqKFA5.svg)](https://asciinema.org/a/uiB03VYXNelbMZBWEBRPqKFA5)
+
 There are some helper scripts.
 
 - `gifConverter.py`: This will take a `.gif` file and drop out a set of `.svg` files for each frame of the image. Additionaly it will make an `.html` and a `.md` file linking to those preview images
@@ -8,4 +13,3 @@ There are some helper scripts.
 - `makeRGB.py`: This script will take a set of `.gif` files as input and convert them into RGB565 format, as well as giving you various options (A macro or raw data to send to curl) to render the gif as a `draw` command.
 
 
-- `ansiPreview.py` Mirrors an Awtrix screen to the CLI
