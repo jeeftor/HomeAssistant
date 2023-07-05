@@ -168,9 +168,35 @@
           link.click();
         }
 
+        // Function to handle "Previous App" button click
+        function previousApp() {
+          var ipAddress = document.getElementById("ipAddress").value;
+          var endpointUrl = "http://" + ipAddress + "/api/previousapp";
+
+          var xhr = new XMLHttpRequest();
+          xhr.open("POST", endpointUrl, true);
+          xhr.send();
+        }
+
+        // Function to handle "Next App" button click
+        function nextApp() {
+          var ipAddress = document.getElementById("ipAddress").value;
+          var endpointUrl = "http://" + ipAddress + "/api/nextapp";
+
+          var xhr = new XMLHttpRequest();
+          xhr.open("POST", endpointUrl, true);
+          xhr.send();
+        }
+
         document
           .getElementById("captureButton")
           .addEventListener("click", captureToSvg);
+        document
+          .getElementById("previousAppButton")
+          .addEventListener("click", previousApp);
+        document
+          .getElementById("nextAppButton")
+          .addEventListener("click", nextApp);
       });
     </script>
   </head>
@@ -214,9 +240,14 @@
 
         <input type="submit" value="Capture" />
         <button id="captureButton">Capture to SVG</button>
+        <br />
       </form>
     </div>
     <div id="pixelTable"></div>
+    <div>
+      <button id="previousAppButton"><< Previous App</button>
+      <button id="nextAppButton">Next App >></button>
+    </div>
     <script>
       // Update the border size when the selection changes
       document
