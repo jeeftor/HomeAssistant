@@ -34,6 +34,19 @@
             background-color: #000000;
             border: 1px solid #000000;
         }
+        
+        /* Adjust the border size of td elements */
+        .border-size-1px td {
+            border-width: 1px;
+        }
+
+        .border-size-2px td {
+            border-width: 2px;
+        }
+
+        .border-size-3px td {
+            border-width: 3px;
+        }
     </style>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -80,7 +93,7 @@
                         var pixelData = JSON.parse(xhr.responseText);
 
                         // Create the table
-                        var table = "<table>";
+                        var table = "<table class='border-size-1px'>"; // Default border size: 1px
                         for (var y = 0; y < 8; y++) {
                             table += "<tr>";
                             for (var x = 0; x < 32; x++) {
@@ -114,9 +127,23 @@
             <label for="captureRate">Capture every (milliseconds):</label>
             <input type="number" id="captureRate" name="captureRate" min="100" max="1000" step="100" required>
             <br>
-            <input type="submit" value="Capture">
+            <label for="borderSize">Border size:</label>
+            <select id="borderSize" name="borderSize">
+                <option value="1" selected>1px</option>
+                <option value="2">2px</option>
+                <option value="3">3px</option>
+            </select>
+            <br>            
         </form>
     </div>
     <div id="pixelTable"></div>
+    <script>
+        // Update the border size when the selection changes
+        document.getElementById("borderSize").addEventListener("change", function() {
+            var pixelTable = document.getElementById("pixelTable");
+            var borderSize = this.value;
+            pixelTable.className = "border-size-" + borderSize + "px";
+        });
+    </script>
 </body>
 </html>
