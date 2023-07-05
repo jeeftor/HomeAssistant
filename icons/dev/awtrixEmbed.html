@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Awtrix Light Display</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f3f3f3;
+      }
+
+      svg {
+        max-width: 100%;
+        max-height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="displayContainer"></div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var urlParams = new URLSearchParams(window.location.search);
+        var ipAddress = urlParams.get("ipAddress");
+        var resolution = urlParams.get("resolution");
+        var captureRate = parseInt(urlParams.get("captureRate")) || 100;
+        var borderWidth = parseInt(urlParams.get("borderWidth")) || 1;
+
+        console.log("IP Address:", ipAddress);
+        console.log("Resolution:", resolution);
+        console.log("Capture Rate:", captureRate);
+        console.log("Border Width:", borderWidth);
+
+        if (ipAddress && resolution) {
+          var endpointUrl = "http://" + ipAddress + "/api/screen";
+
+          console.log("Querying endpoint:", endpointUrl);
+
+          fetchAndDisplay(endpointUrl, resolution, borderWidth);
+          setInterval(function () {
+            fetchAndDisplay(endpointUrl, resolution, borderWidth);
+          }, captureRate);
+        } else {
+          console.error("Missing IP address or resolution parameters.");
+        }
+      });
+
+      function fetchAndDisplay(endpointUrl, resolution, borderWidth) {
+        fetch(endpointUrl)
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (pixelData) {
+            var svg = createSvgElement(resolution, pixelData, borderWidth);
+            var displayContainer = document.getElementById("displayContainer");
+            displayContainer.innerHTML = "";
+            displayContainer.appendChild(svg);
+          })
+          .catch(function (error) {
+            console.error("Error fetching data:", error);
+          });
+      }
+
+      function createSvgElement(resolution, pixelData, borderWidth) {
+        var resolutionParts = resolution.split("x");
+        var width = parseInt(resolutionParts[0]);
+        var height = parseInt(resolutionParts[1]);
+
+        var scaleX = width / 32;
+        var scaleY = height / 8;
+
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", width);
+        svg.setAttribute("height", height);
+
+        for (var y = 0; y < 8; y++) {
+          for (var x = 0; x < 32; x++) {
+            var rgb565 = pixelData[y * 32 + x];
+            var red = (rgb565 & 0xff0000) >> 16;
+            var green = (rgb565 & 0x00ff00) >> 8;
+            var blue = rgb565 & 0x0000ff;
+
+            var svgPixel = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "rect"
+            );
+            svgPixel.setAttribute("x", x * scaleX);
+            svgPixel.setAttribute("y", y * scaleY);
+            svgPixel.setAttribute("width", scaleX);
+            svgPixel.setAttribute("height", scaleY);
+            svgPixel.setAttribute(
+              "fill",
+              "rgb(" + red + "," + green + "," + blue + ")"
+            );
+            svgPixel.setAttribute("stroke", "black");
+            svgPixel.setAttribute("stroke-width", borderWidth);
+
+            svg.appendChild(svgPixel);
+          }
+        }
+
+        return svg;
+      }
+    </script>
+  </body>
+</html>
