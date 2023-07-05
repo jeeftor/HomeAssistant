@@ -1,206 +1,231 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Awtrix Light Capture</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: #f3f3f3;
-        }
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background-color: #f3f3f3;
+      }
 
-        #pixelTable {
-            width: 98%;
-            max-width: 98vw;
-            overflow-x: auto;
-            display: flex;
-            justify-content: center;
-        }
+      #pixelTable {
+        width: 98%;
+        max-width: 98vw;
+        overflow-x: auto;
+        display: flex;
+        justify-content: center;
+      }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #000000;
-        }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #000000;
+      }
 
-        td {
-            height: 20px;
-            width: 20px;
-            background-color: #000000;
-            border: 1px solid #000000;
-        }
+      td {
+        height: 20px;
+        width: 20px;
+        background-color: #000000;
+        border: 1px solid #000000;
+      }
 
-        /* Adjust the border size of td elements */
-        .border-size-1px td {
-            border-width: 1px;
-        }
+      /* Adjust the border size of td elements */
+      .border-size-1px td {
+        border-width: 1px;
+      }
 
-        .border-size-2px td {
-            border-width: 2px;
-        }
+      .border-size-2px td {
+        border-width: 2px;
+      }
 
-        .border-size-3px td {
-            border-width: 3px;
-        }
+      .border-size-3px td {
+        border-width: 3px;
+      }
     </style>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var intervalId;
-            var form = document.getElementById("captureForm");
+      document.addEventListener("DOMContentLoaded", function () {
+        var intervalId;
+        var form = document.getElementById("captureForm");
 
-            var urlParams = new URLSearchParams(window.location.search);
-            var ipAddress = urlParams.get("ip") || "";
-            var captureRate = urlParams.get("capture_every") || "100";
+        var urlParams = new URLSearchParams(window.location.search);
+        var ipAddress = urlParams.get("ip") || "";
+        var captureRate = urlParams.get("capture_every") || "100";
 
-            document.getElementById("ipAddress").value = ipAddress;
-            document.getElementById("captureRate").value = captureRate;
+        document.getElementById("ipAddress").value = ipAddress;
+        document.getElementById("captureRate").value = captureRate;
 
-            form.addEventListener("submit", function(event) {
-                event.preventDefault();
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
 
-                var ipAddress = document.getElementById("ipAddress").value;
-                var endpointUrl = "http://" + ipAddress + "/api/screen";
-                var captureRate = document.getElementById("captureRate").value;
+          var ipAddress = document.getElementById("ipAddress").value;
+          var endpointUrl = "http://" + ipAddress + "/api/screen";
+          var captureRate = document.getElementById("captureRate").value;
 
-                // Check if the capture rate is a multiple of 100ms
-                if (captureRate % 100 !== 0) {
-                    alert("Capture rate must be a multiple of 100ms.");
-                    return;
-                }
+          // Check if the capture rate is a multiple of 100ms
+          if (captureRate % 100 !== 0) {
+            alert("Capture rate must be a multiple of 100ms.");
+            return;
+          }
 
-                // Clear previous interval if exists
-                clearInterval(intervalId);
+          // Clear previous interval if exists
+          clearInterval(intervalId);
 
-                // Call the function to query the endpoint and update the pixel table
-                updatePixelTable(endpointUrl);
+          // Call the function to query the endpoint and update the pixel table
+          updatePixelTable(endpointUrl);
 
-                // Set interval to periodically update the pixel table
-                intervalId = setInterval(function() {
-                    updatePixelTable(endpointUrl);
-                }, captureRate);
-            });
-
-            function updatePixelTable(endpointUrl) {
-
-                var borderSize = document.getElementById("borderSize").value;
-                var pixelTable = document.getElementById("pixelTable");
-                pixelTable.className = "border-size-" + borderSize + "px";
-
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", endpointUrl, true);
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            var pixelData = JSON.parse(xhr.responseText);
-
-            var selectedResolution = document.getElementById("svgResolution").value;
-            var resolutionParts = selectedResolution.split("x");
-            var width = parseInt(resolutionParts[0]);
-            var height = parseInt(resolutionParts[1]);
-
-            // Calculate the scaling factor for the pixels
-            var scaleX = width / 32;
-            var scaleY = height / 8;
-
-            // Create the table
-            var table = "<svg xmlns='http://www.w3.org/2000/svg' width='" + width + "' height='" + height + "'>";
-
-            for (var y = 0; y < 8; y++) {
-                for (var x = 0; x < 32; x++) {
-                    var rgb565 = pixelData[y * 32 + x];
-                    var red = (rgb565 & 0xFF0000) >> 16;
-                    var green = (rgb565 & 0x00FF00) >> 8;
-                    var blue = rgb565 & 0x0000FF;
-
-
-                    // Calculate the position of the pixel in the SVG
-                    var svgX = x * scaleX;
-                    var svgY = y * scaleY;
-
-                    // Calculate the size of the pixel in the SVG
-                    var svgPixelWidth = scaleX;
-                    var svgPixelHeight = scaleY;
-
-                    var color = "rgb(" + red + "," + green + "," + blue + ")";
-                    table += "<rect x='" + svgX + "' y='" + svgY + "' width='" + svgPixelWidth + "' height='" + svgPixelHeight + "' style='fill: " + color + "; stroke: black; stroke-width: "+borderSize+"px;'></rect>";
-                    // table += "<rect x='" + (x * 20) + "' y='" + (y * 20) + "' width='20' height='20' style='fill: " + color + "; stroke: black; stroke-width: " + borderSize + "px;'></rect>";
-
-                }
-            }
-
-            table += "</svg>";
-
-            // Display the table
-            document.getElementById("pixelTable").innerHTML = table;
-        }
-    };
-    xhr.send();
-}
-
-            function captureToSvg() {
-
-                var pixelTable = document.getElementById("pixelTable");
-                var svgData = pixelTable.innerHTML;
-
-                var link = document.createElement("a");
-                link.href = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
-                link.download = "table.svg";
-                link.click();
-            }
-
-            document.getElementById("captureButton").addEventListener("click", captureToSvg);
+          // Set interval to periodically update the pixel table
+          intervalId = setInterval(function () {
+            updatePixelTable(endpointUrl);
+          }, captureRate);
         });
+
+        function updatePixelTable(endpointUrl) {
+          var borderSize = document.getElementById("borderSize").value;
+          var pixelTable = document.getElementById("pixelTable");
+          pixelTable.className = "border-size-" + borderSize + "px";
+
+          var xhr = new XMLHttpRequest();
+          xhr.open("GET", endpointUrl, true);
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+              var pixelData = JSON.parse(xhr.responseText);
+
+              var selectedResolution =
+                document.getElementById("svgResolution").value;
+              var resolutionParts = selectedResolution.split("x");
+              var width = parseInt(resolutionParts[0]);
+              var height = parseInt(resolutionParts[1]);
+
+              // Calculate the scaling factor for the pixels
+              var scaleX = width / 32;
+              var scaleY = height / 8;
+
+              // Create the table
+              var table =
+                "<svg xmlns='http://www.w3.org/2000/svg' width='" +
+                width +
+                "' height='" +
+                height +
+                "'>";
+
+              for (var y = 0; y < 8; y++) {
+                for (var x = 0; x < 32; x++) {
+                  var rgb565 = pixelData[y * 32 + x];
+                  var red = (rgb565 & 0xff0000) >> 16;
+                  var green = (rgb565 & 0x00ff00) >> 8;
+                  var blue = rgb565 & 0x0000ff;
+
+                  // Calculate the position of the pixel in the SVG
+                  var svgX = x * scaleX;
+                  var svgY = y * scaleY;
+
+                  // Calculate the size of the pixel in the SVG
+                  var svgPixelWidth = scaleX;
+                  var svgPixelHeight = scaleY;
+
+                  var color = "rgb(" + red + "," + green + "," + blue + ")";
+                  table +=
+                    "<rect x='" +
+                    svgX +
+                    "' y='" +
+                    svgY +
+                    "' width='" +
+                    svgPixelWidth +
+                    "' height='" +
+                    svgPixelHeight +
+                    "' style='fill: " +
+                    color +
+                    "; stroke: black; stroke-width: " +
+                    borderSize +
+                    "px;'></rect>";
+                  // table += "<rect x='" + (x * 20) + "' y='" + (y * 20) + "' width='20' height='20' style='fill: " + color + "; stroke: black; stroke-width: " + borderSize + "px;'></rect>";
+                }
+              }
+
+              table += "</svg>";
+
+              // Display the table
+              document.getElementById("pixelTable").innerHTML = table;
+            }
+          };
+          xhr.send();
+        }
+
+        function captureToSvg() {
+          var pixelTable = document.getElementById("pixelTable");
+          var svgData = pixelTable.innerHTML;
+
+          var link = document.createElement("a");
+          link.href =
+            "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
+          link.download = "table.svg";
+          link.click();
+        }
+
+        document
+          .getElementById("captureButton")
+          .addEventListener("click", captureToSvg);
+      });
     </script>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Awtrix Light Capture</h1>
     <div>
-        <form id="captureForm">
-            <label for="ipAddress">IP:</label>
-            <input type="text" id="ipAddress" name="ipAddress" required>
-            <br>
-            <label for="captureRate">Capture every (milliseconds):</label>
-            <input type="number" id="captureRate" name="captureRate" min="100" max="1000" step="100" required>
-            <br>
-            <label for="borderSize">Border size:</label>
-            <select id="borderSize" name="borderSize">
-                <option value="1" selected>1px</option>
-                <option value="2">2px</option>
-                <option value="3">3px</option>
-            </select>
-            <br>
-            <label for="svgResolution">SVG Resolution:</label>
-            <select id="svgResolution" name="svgResolution">
-                <option value="1024x256">1024x256</option>
-                <option value="512x128">512x128</option>
-                <option value="256x64">256x64</option>
-                <option value="128x32">128x32</option>                
-                <option value="64x16">64x16</option>                
-                <option value="32x8">32x8</option>
-                
-                
+      <form id="captureForm">
+        <label for="ipAddress">IP:</label>
+        <input type="text" id="ipAddress" name="ipAddress" required />
+        <br />
+        <label for="captureRate">Capture every (milliseconds):</label>
+        <input
+          type="number"
+          id="captureRate"
+          name="captureRate"
+          min="100"
+          max="1000"
+          step="100"
+          required
+        />
+        <br />
+        <label for="borderSize">Border size:</label>
+        <select id="borderSize" name="borderSize">
+          <option value="1" selected>1px</option>
+          <option value="2">2px</option>
+          <option value="3">3px</option>
+        </select>
+        <br />
+        <label for="svgResolution">SVG Resolution:</label>
+        <select id="svgResolution" name="svgResolution">
+          <option value="1024x256">1024x256</option>
+          <option value="512x128">512x128</option>
+          <option value="256x64">256x64</option>
+          <option value="128x32">128x32</option>
+          <option value="64x16">64x16</option>
+          <option value="32x8">32x8</option>
 
-                <!-- Add more resolution options as needed -->
-            </select>
-            <br>
+          <!-- Add more resolution options as needed -->
+        </select>
+        <br />
 
-            <input type="submit" value="Capture">
-            <button id="captureButton">Capture to SVG</button>
-        </form>
+        <input type="submit" value="Capture" />
+        <button id="captureButton">Capture to SVG</button>
+      </form>
     </div>
     <div id="pixelTable"></div>
     <script>
-        // Update the border size when the selection changes
-        document.getElementById("borderSize").addEventListener("change", function() {
-            var pixelTable = document.getElementById("pixelTable");
-            var borderSize = this.value;
-            pixelTable.className = "border-size-" + borderSize + "px";
+      // Update the border size when the selection changes
+      document
+        .getElementById("borderSize")
+        .addEventListener("change", function () {
+          var pixelTable = document.getElementById("pixelTable");
+          var borderSize = this.value;
+          pixelTable.className = "border-size-" + borderSize + "px";
         });
     </script>
-</body>
+  </body>
 </html>
