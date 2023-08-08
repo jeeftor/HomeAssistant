@@ -4,7 +4,6 @@ blueprint:
   description: >
     Blueprint to show Air Quality Forecast + Air Quality from AirNow.gov + IQAir
 
-
     In my limited research IQAir offers a scrapable AQI forecast, but primarily focused on 2.5PPM air quality. AirNow.gov has a worse update rate but it offers an Ozone forecast - so it may be useful to have both sensors up
 
     In order to use this blueprint you'll have to install a HACS component (see below) to scrape the IQAir webpage
@@ -141,7 +140,7 @@ variables:
   iq_air_forecast_3: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[2] | int}}"
   iq_air_forecast_4: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[3] | int}}"
   iq_air_forecast_5: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[4] | int}}"
-  airnow_aqi: "{{ states(airnow_sensor) }}"
+  airnow_aqi: "{{ states(airnow_sensor) | round(0) }}"
 
   forecast: >-
     {%- macro aqi_line(x, value) %}
@@ -186,8 +185,8 @@ variables:
     {%- endif %}
     {%- endmacro %}
 
-    {%- set iqair = iq_air_aqi %}
-    {%- set airnow = airnow_aqi %}
+    {%- set iqair = round(iq_air_aqi,0) %}
+    {%- set airnow = round(airnow_aqi,0) %}
 
     {"draw": [
       {{aqi_icon}},

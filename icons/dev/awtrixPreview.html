@@ -54,11 +54,16 @@
         var form = document.getElementById("captureForm");
 
         var urlParams = new URLSearchParams(window.location.search);
-        var ipAddress = urlParams.get("ip") || "";
-        var captureRate = urlParams.get("capture_every") || "100";
+        var urlParams = new URLSearchParams(window.location.search);
+        var ipAddress = urlParams.get("ipAddress") || "";
+        var captureRate = urlParams.get("captureRate") || "100";
+        var borderSize = urlParams.get("borderSize") || "1";
+        var svgResolution = urlParams.get("svgResolution") || "512x128";
 
         document.getElementById("ipAddress").value = ipAddress;
         document.getElementById("captureRate").value = captureRate;
+        document.getElementById("borderSize").value = borderSize;
+        document.getElementById("svgResolution").value = svgResolution;
 
         form.addEventListener("submit", function (event) {
           event.preventDefault();
@@ -227,12 +232,12 @@
         <br />
         <label for="svgResolution">SVG Resolution:</label>
         <select id="svgResolution" name="svgResolution">
-          <option value="1024x256">1024x256</option>
-          <option value="512x128">512x128</option>
-          <option value="256x64">256x64</option>
-          <option value="128x32">128x32</option>
-          <option value="64x16">64x16</option>
           <option value="32x8">32x8</option>
+          <option value="64x16">64x16</option>
+          <option value="128x32">128x32</option>
+          <option value="256x64">256x64</option>
+          <option value="512x128">512x128</option>
+          <option value="1024x256">1024x256</option>
 
           <!-- Add more resolution options as needed -->
         </select>
