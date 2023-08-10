@@ -134,7 +134,7 @@ variables:
   iqair_sensor: !input iqair_sensor
   airnow_sensor: !input airnow_sensor
 
-  iq_air_aqi: "{{ states('sensor.iq_air_aqi',-1) | int }}"
+  iq_air_aqi: "{{ states('sensor.iq_air_aqi',-1) | int | round(0)}}"
   iq_air_forecast_1: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[0] | int}}"
   iq_air_forecast_2: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[1] | int}}"
   iq_air_forecast_3: "{{(state_attr(iqair_sensor, 'forecast') | from_json)[2] | int}}"
@@ -185,8 +185,8 @@ variables:
     {%- endif %}
     {%- endmacro %}
 
-    {%- set iqair = round(iq_air_aqi,0) %}
-    {%- set airnow = round(airnow_aqi,0) %}
+    {%- set iqair = iq_air_aqi  %}
+    {%- set airnow = airnow_aqi  %}
 
     {"draw": [
       {{aqi_icon}},
