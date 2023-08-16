@@ -51,7 +51,7 @@ blueprint:
 
     Then you can add a [REST](https://www.home-assistant.io/integrations/sensor.rest/) sensor to your `configuraiton.yaml` file like the one here:
 
-        resource: https://api.ipgeolocation.io/astronomy?lat=<LAT>&long=-<LON>&apiKey=<API_KEY>
+        resource: https://api.ipgeolocation.io/astronomy?lat=<LAT>&long=<LON>&apiKey=<API_KEY>
         name: ip_geo_location
         scan_interval: 300
         value_template: "OK"
