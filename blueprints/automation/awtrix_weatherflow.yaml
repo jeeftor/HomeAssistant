@@ -620,7 +620,7 @@ variables:
     {%- elif when_show_moon == 'risen' %}
     {{moon_risen}}
     {%- else %}
-    {{state_attr('sun.sun', 'elevation') > 0 and moon_risen}}
+    {{state_attr('sun.sun', 'elevation') < 0 and moon_risen}}
     {%- endif %}
   #----------------
   # Temp & Text
