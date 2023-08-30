@@ -630,8 +630,18 @@ variables:
   current_temp_var: !input current_temp_var
   temp_digits: !input temp_digits
   temp_suffix: !input temp_suffix
-  current_temp: "{{states(current_temp_var) | round(temp_digits)}}"
-  temp_text: "{{ current_temp ~ temp_suffix}}"
+  current_temp: "{{states(current_temp_var)}}"
+
+  temp_text: >-
+    {%- macro round_and_set_temp(temp_var, temp_suffix, digits=0) -%}
+    {%- if has_value(temp_var) -%}
+      {{ states(temp_var) | round(digits) ~ temp_suffix}} 
+    {%- else -%}
+    ??
+    {%- endif -%}
+    {%- endmacro -%}
+    {{ round_and_set_temp(current_temp_var, temp_suffix, temp_digits)}}
+
   forecast_temp_field: !input forecast_temp_field
   text_available_width: >
     {%- if show_moon %}16{%- else %}24{%- endif %}
@@ -946,7 +956,7 @@ variables:
     {%- if '.' in str %}
     {%- set char_count = (str | length) -1 %}{{char_count * 3 + 1 + char_count}}
     {%- else %}
-    {%- set char_count = (str | length) %}{{char_count * 3 + (char_count - 1)}}    
+    {%- set char_count = (str | length) %}{{char_count * 3 + (char_count - 1)}}
     {%- endif %}
     {%- endmacro %}
 
@@ -964,9 +974,13 @@ variables:
     {# Define the color mapping dictionary #}
     {
     "draw": [
-      {{draw_forecast_lines(8,hours_to_show,0)}},
-      {"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}
-      {% if show_moon %}, {{moon_data}} {% endif %}
+     {{draw_forecast_lines(8,hours_to_show,0)}}
+     {%- if current_temp != 'unavailable' -%}
+     ,{"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}
+     {%- else -%}
+     {"dt":"err"}
+     {%- endif -%}
+    {% if show_moon %}, {{moon_data}} {% endif %}
     ],
     "icon": "{{icon}}",
     "duration": {{message_duration}},
