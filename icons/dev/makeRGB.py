@@ -38,9 +38,10 @@ class RGBMaker:
 
                 # Convert the RGB values to RGB565 format
                 rgb565 = ((r & 0b11111000) << 8) | ((g & 0b11111100) << 3) | (b >> 3)
+                rgb888 = (r << 16) | (g << 8) | b
 
                 # Append the RGB565 value to the list
-                rgb565_data.append(rgb565)
+                rgb565_data.append(rgb888)
 
         return rgb565_data
 
@@ -100,9 +101,9 @@ class RGBMaker:
 
         for rgb565 in unique_colors:
             # Extract the RGB components from RGB565 format
-            r = (rgb565 >> 8) & 0xF8
-            g = (rgb565 >> 3) & 0xFC
-            b = (rgb565 << 3) & 0xF8
+            r = (rgb565 >> 16) & 0xFF
+            g = (rgb565 >> 8) & 0xFF
+            b = rgb565 & 0xFF
 
             # Convert the RGB components to hexadecimal
             hex_value = "0x{:04X}".format(rgb565)
@@ -115,7 +116,7 @@ class RGBMaker:
 
             # Print the color information, count, and ASCII swatch
             print(
-                "Swatch: {} RGB565: {} Hex: {} Count: {}".format(
+                "Swatch: {} RGB888: {} Hex: {} Count: {}".format(
                     swatch_col, rgb565_col, hex_col, count_col
                 )
             )
@@ -167,14 +168,9 @@ class RGBMaker:
                 rgb565 = rgb565_data[y * self.width + x]
 
                 # Extract the RGB components from RGB565 format
-                r = (rgb565 >> 8) & 0b11111000
-                g = (rgb565 >> 3) & 0b11111100
-                b = (rgb565 << 3) & 0b11111000
-
-                # Normalize the RGB components to the range of 0-255
-                r = (r | (r >> 5)) & 0xFF
-                g = (g | (g >> 6)) & 0xFF
-                b = (b | (b >> 5)) & 0xFF
+                r = (rgb565 >> 16) & 0xFF
+                g = (rgb565 >> 8) & 0xFF
+                b = rgb565 & 0xFF
 
                 # Determine the ANSI color code based on the RGB components
                 ansi_color_code = 16 + (36 * (r // 51)) + (6 * (g // 51)) + (b // 51)
@@ -183,18 +179,6 @@ class RGBMaker:
                 print("\033[48;5;{}m  \033[0m".format(ansi_color_code), end="")
 
             print()  # Move to the next line after printing each row
-
-    # def print_rgb565_data(self, rgb565_data):
-    #     print("RGB565 Data ({}x{}):".format(self.width, self.height))
-    #
-    #     max_value_length = len(str(max(rgb565_data)))  # Calculate the maximum length of RGB565 values
-    #
-    #     for i in range(0, len(rgb565_data), self.width):
-    #         row = rgb565_data[i: i + self.width]
-    #         row_str = ", ".join(["{:{}}".format(value, max_value_length) for value in row])
-    #         if i < len(rgb565_data) - self.width:
-    #             row_str += ","
-    #         print(row_str)
 
     def print_rgb565_data(self, rgb565_data, colors=True):
         print("RGB565 Data ({}x{}):".format(self.width, self.height))
@@ -211,10 +195,10 @@ class RGBMaker:
                 value_str = "{:{}}".format(value, max_value_length)
 
                 if colors:
-                    # Extract the RGB components from RGB565 format
-                    r = ((value & 0b1111100000000000) >> 11) << 3
-                    g = ((value & 0b0000011111000000) >> 5) << 2
-                    b = (value & 0b0000000000111110) << 3
+                    # Extract the RGB components from RGB888 format
+                    r = (value >> 16) & 0xFF
+                    g = (value >> 8) & 0xFF
+                    b = value & 0xFF
 
                     # Convert RGB565 to RGB888 format
                     r = (r | (r >> 5)) & 0xFF
