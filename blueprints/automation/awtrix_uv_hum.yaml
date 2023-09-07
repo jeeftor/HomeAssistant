@@ -180,7 +180,9 @@ variables:
         {{draw_v(19,5,"#00ffaa")}},
         {{uv_forecast}}
         {{draw_uv()}}
-      ]
+      ],
+      "lifetime": 120,
+      "lifetimeMode":1
     }
 
 trigger:
