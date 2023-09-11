@@ -690,7 +690,7 @@ variables:
     {%- set set = state_attr('sun.sun','next_setting') %}
     {%- set ts_rise = rise |as_timestamp %}
     {%- set ts_set = set |as_timestamp %}
-    {{ iif(next_event == 'sunrise',(ts_rise - utcnow()|as_timestamp) / 60,(ts_set - utcnow()|as_timestamp) / 60) | round(0) }}
+    {{ iif(sun_next_event == 'sunrise',(ts_rise - utcnow()|as_timestamp) / 60,(ts_set - utcnow()|as_timestamp) / 60) | round(0) }}
 
   sun_next_str: >-
     {%- set rise = state_attr('sun.sun','next_rising') %}
