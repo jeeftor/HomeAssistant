@@ -320,6 +320,15 @@ blueprint:
       selector:
         boolean:
       default: True
+    use_moon_sunny_night:
+      name: Swap Sunny + Night for the Moon
+      description: >-
+        Some weather integrations may not correctly implement the `clear-night` weather state. In that case you can use
+        this option to automatically swap out the moon for if you have night + sunny
+      selector:
+        boolean:
+      default: True
+
     #----------------------------------------
     # Sunrise Sunset Times :)
     #----------------------------------------
@@ -729,6 +738,7 @@ variables:
 
   icon_clear_night: !input icon_clear_night
   use_moon_clear_night: !input use_moon_clear_night
+  use_moon_sunny_night: !input use_moon_sunny_night
   icon_cloudy: !input icon_cloudy
   icon_exceptional: !input icon_exceptional
   icon_fog: !input icon_fog
@@ -783,6 +793,8 @@ variables:
   icon: >
     {%- if ((weather == 'clear_night') and use_moon_clear_night) %}
       {{clear_night_dict[moon_phase]}}
+    {%- elif (sun_next_event == 'sunrise') and use_moon_sunny_night and (weather == 'sunny') -%}
+      
     {%- else %}
       {{ icon_dict[weather] }}
     {%- endif %}
@@ -815,7 +827,13 @@ variables:
       {%- endif  %}
     {%- endmacro %}
 
-    {{iif(weather == 'clear-night' and use_moon_clear_night, draw_moon(moon_phase,0,0), draw_moon(moon_phase,23,0))}}
+    {%- if weather == 'clear-night' and use_moon_clear_night -%}
+    {{draw_moon(moon_phase,0,0)}}
+    {%- elif weather == 'sunny' and use_moon_sunny_night -%}
+    {{draw_moon(moon_phase,0,0)}}
+    {%- else -%}
+    {{draw_moon(moon_phase,23,0)}}
+    {%- endif -%}
 
   payload: >
     {%- macro interpolate(dictionary, x) -%}
