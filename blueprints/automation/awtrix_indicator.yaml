@@ -37,9 +37,13 @@ blueprint:
       selector:
         color_rgb:
       default: [255, 0, 0]
-    color_active_blink:
-      name: Blink Active
-      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+    color_active_fade:
+      name: Fade Active
+      description:
+        Rate in `ms` that the indicator will fade. `0` disables the blinking.
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
       selector:
         number:
           min: 0
@@ -48,15 +52,35 @@ blueprint:
           unit_of_measurement: "ms"
           mode: slider
       default: 0
+    color_active_blink:
+      name: Blink Active
+      description:
+        Rate in `ms` that the indicator will blink. `0` disables the blinking
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+
     color_1_min_warning:
       name: 1 Minute Warning
       description: Color to indiciate a 1 Minute Warning prior to meeting start
       selector:
         color_rgb:
       default: [255, 80, 0]
-    color_1_min_warning_blink:
-      name: Blink 1 min warning color
-      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+    color_1_min_warning_fade:
+      name: Fade 1 min warning color
+      description:
+        Rate in `ms` that the indicator will blink. `fade` disables the blinking.
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
       selector:
         number:
           min: 0
@@ -65,15 +89,35 @@ blueprint:
           unit_of_measurement: "ms"
           mode: slider
       default: 0
+    color_1_min_warning_blink:
+      name: Blink 1 min warning color
+      description:
+        Rate in `ms` that the indicator will blink. `0` disables the blinking
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+
     color_5_min_warning:
       name: 5 minute Warning
       description: Color to indiciate a 5 minute Warning prior to meeting start
       selector:
         color_rgb:
       default: [255, 125, 0]
-    color_5_min_warning_blink:
-      name: Blink 5 min warning color
-      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+    color_5_min_warning_fade:
+      name: Fade 5 min warning color
+      description:
+        Rate in `ms` that the indicator will blink. `fade` disables the blinking.
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
       selector:
         number:
           min: 0
@@ -82,15 +126,35 @@ blueprint:
           unit_of_measurement: "ms"
           mode: slider
       default: 0
+    color_5_min_warning_blink:
+      name: Blink 5 min warning color
+      description:
+        Rate in `ms` that the indicator will blink. `0` disables the blinking
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+
     color_10_min_warning:
       name: 10 Minute Warning
       description: Color to indiciate a 10 Minute Warning prior to meeting start
       selector:
         color_rgb:
       default: [255, 255, 0]
-    color_10_min_warning_blink:
-      name: Blink 10 min warning color
-      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+    color_10_min_warning_fade:
+      name: Fade 10 min warning color
+      description:
+        Rate in `ms` that the indicator will blink. `fade disables the blinking.
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
       selector:
         number:
           min: 0
@@ -99,6 +163,22 @@ blueprint:
           unit_of_measurement: "ms"
           mode: slider
       default: 0
+    color_10_min_warning_blink:
+      name: Blink 10 min warning color
+      description:
+        Rate in `ms` that the indicator will blink. `0` disables the blinking
+
+
+        `NOTE:` If you pick FADE and BLINK something funky might happen.
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+
 mode: queued
 variables:
   color_active: !input color_active
@@ -110,6 +190,11 @@ variables:
   blink_1_min_warning: !input color_1_min_warning_blink
   blink_5_min_warning: !input color_5_min_warning_blink
   blink_10_min_warning: !input color_10_min_warning_blink
+
+  fade_active: !input color_active_fade
+  fade_1_min_warning: !input color_1_min_warning_fade
+  fade_5_min_warning: !input color_5_min_warning_fade
+  fade_10_min_warning: !input color_10_min_warning_fade
 
   calendar: !input calendar
   cal_state: "{{states(calendar)}}"
@@ -299,8 +384,9 @@ action:
             {%- endif %}
         {%- endfor -%}
         {{ns.future_events}}
-
+      future_events_count: "{{future_events | length }}"
       next_events: >-
+        {%- if future_events_count > 1 %}
         {%- set next_event_start_ts = future_events[0]['start_ts'] -%}
         {%- set ns = namespace(next_events=[]) %}
           {%- for event in event_list  %}
@@ -310,27 +396,31 @@ action:
             {%- endif %}
         {%- endfor -%}
         {{ns.next_events}}
+        {%- else %}
+        []
+        {%- endif%}
       next_events_count: "{{ next_events | length }}"
       event_payload: >-
         { "current_events":{{current_events}}
           ,"current_events_count":{{current_events_count}}
           ,"next_events":{{next_events}}
           ,"next_events_count":{{next_events_count}}
-          ,"future_events":{{future_events}}
+          ,"future_events":{{future_events}},
+          ,"future_events_count":{{future_events_count}}
           ,"events":{{event_list}}
         }
 
       indicator_color_blink: >-
         {% macro get_color_blink(data) %}
           {%- if data['current_events_count'] > 0 -%}
-            {'debug': 'active', 'color':{{color_active}}, 'blink': {{blink_active}}}
+            {'debug': 'active', 'color':{{color_active}}, 'blink': {{blink_active}}, 'fade': {{fade_active}}}
           {%- elif data['next_events_count'] > 0 -%}            
             {%- if data['next_events'][0]['starts_in_1'] -%}
-              {'debug': '1 min', 'color':{{color_1_min_warning}}, 'blink': {{blink_1_min_warning}}}
+              {'debug': '1 min', 'color':{{color_1_min_warning}}, 'blink': {{blink_1_min_warning}}, 'fade': {{fade_1_min_warning}}}
             {%- elif data['next_events'][0]['starts_in_5'] -%}
-              {'debug': '5 min', 'color':{{color_5_min_warning}}, 'blink': {{blink_5_min_warning}}}
+              {'debug': '5 min', 'color':{{color_5_min_warning}}, 'blink': {{blink_5_min_warning}}, 'fade': {{fade_5_min_warning}}}
             {%- elif data['next_events'][0]['starts_in_10'] -%}
-              {'debug': '10 min', 'color':{{color_10_min_warning}}, 'blink': {{blink_10_min_warning}}}
+              {'debug': '10 min', 'color':{{color_10_min_warning}}, 'blink': {{blink_10_min_warning}}, 'fade': {{fade_10_min_warning}}}
             {%- else -%}
               {'debug': 'none', 'color':[0,0,0], 'blink':0}
             {% endif %}          
@@ -351,5 +441,5 @@ action:
               { 
                 "color": {{indicator_color_blink['color']}}
                 ,"blink":{{indicator_color_blink['blink']}}
-                ,"debug":"{{indicator_color_blink['debug']}}"
+                ,"fade":{{indicator_color_blink['blink']}}
               }
