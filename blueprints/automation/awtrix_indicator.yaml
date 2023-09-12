@@ -1,0 +1,355 @@
+---
+blueprint:
+  name: AWTRIX Calendar 📅️ Notifications
+  description: >
+    Monitors the state of a calendar and sets the indicator based on the status of events
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          integration: mqtt
+          manufacturer: Blueforcer
+          model: AWTRIX Light
+          multiple: true
+    calendar:
+      name: Calendar
+      selector:
+        entity:
+          domain: calendar
+    indicator:
+      name: Indicator Light
+      description: Which indicator light to use
+      selector:
+        select:
+          options:
+            - label: "Top Indicator (1)"
+              value: "1"
+            - label: Middle Light(2)
+              value: "2"
+            - label: Bottom Light(3)
+              value: "3"
+    color_active:
+      name: Activie Color
+      description: Color to use when in a meeting
+      selector:
+        color_rgb:
+      default: [255, 0, 0]
+    color_active_blink:
+      name: Blink Active
+      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+    color_1_min_warning:
+      name: 1 Minute Warning
+      description: Color to indiciate a 1 Minute Warning prior to meeting start
+      selector:
+        color_rgb:
+      default: [255, 80, 0]
+    color_1_min_warning_blink:
+      name: Blink 1 min warning color
+      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+    color_5_min_warning:
+      name: 5 minute Warning
+      description: Color to indiciate a 5 minute Warning prior to meeting start
+      selector:
+        color_rgb:
+      default: [255, 125, 0]
+    color_5_min_warning_blink:
+      name: Blink 5 min warning color
+      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+    color_10_min_warning:
+      name: 10 Minute Warning
+      description: Color to indiciate a 10 Minute Warning prior to meeting start
+      selector:
+        color_rgb:
+      default: [255, 255, 0]
+    color_10_min_warning_blink:
+      name: Blink 10 min warning color
+      description: Rate in `ms` that the indicator will blink. `0` disables the blinking
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 250
+          unit_of_measurement: "ms"
+          mode: slider
+      default: 0
+mode: queued
+variables:
+  color_active: !input color_active
+  color_1_min_warning: !input color_1_min_warning
+  color_5_min_warning: !input color_5_min_warning
+  color_10_min_warning: !input color_10_min_warning
+
+  blink_active: !input color_active_blink
+  blink_1_min_warning: !input color_1_min_warning_blink
+  blink_5_min_warning: !input color_5_min_warning_blink
+  blink_10_min_warning: !input color_10_min_warning_blink
+
+  calendar: !input calendar
+  cal_state: "{{states(calendar)}}"
+
+  light_suffix: !input indicator
+  lights: >-
+    {%- set ns = namespace(lights=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set light = (device_entities(device_id) | select('search','indicator_' ~ light_suffix) | list)[0] %}
+      {% set ns.lights = ns.lights + [light] %}
+    {% endfor %}
+    {{ ns.lights}}
+  device_ids: !input awtrix
+  devices_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/indicator' ~ light_suffix] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list}}
+
+trigger:
+  - platform: time_pattern
+    seconds: /5
+
+action:
+  - service: calendar.list_events
+    data:
+      duration:
+        hours: 8
+        minutes: 0
+        seconds: 0
+    target:
+      entity_id: "{{ calendar }}"
+    response_variable: cal_events
+  - variables:
+      event_list: >
+        {%- set time_period_phrases = [{'language': 'en','phrases':{  'year': ['year', 'years', 'yr'],  'month': ['month', 'months', 'mth'],  'week': ['week', 'weeks', 'wk'],  'day': ['day', 'days', 'day'],  'hour': ['hour', 'hours', 'hr'],  'minute': ['minute', 'minutes', 'min'],  'second': ['second', 'seconds', 'sec'],  'combine': ' and ',  'error': 'Incorrect date'}}]%}
+
+        {#
+          macro to split a timedelta in years, months, weeks, days, hours, minutes, seconds
+          used by the relative time plus macro, set up as a seperate macro so it can be reused
+        #}
+        {%- macro time_split(date, time, compare_date) -%}
+          {# set defaults for variables #}
+            {%- set date = date | as_local -%}
+            {%- set time = time | default(true) | bool(true) -%}
+            {%- set n = compare_date if compare_date is defined else now() -%}
+            {%- set n = n if time else today_at() -%}
+            {%- set a = [n, date] | max -%}
+            {%- set b = [n, date] | min -%}
+          {#- set time periods in seconds #}
+            {%- set m, h, d, w = 60, 3600, 86400, 604800 -%}
+          {#- set numer of years, and set n to value using this number of years #}
+            {%- set yrs = a.year - b.year - (1 if a.replace(year=b.year) < b else 0) -%}
+            {%- set a = a.replace(year=a.year - yrs) -%}
+          {#- set numer of months, and set n to value using this number of months #}
+            {%- set mth = (a.month - b.month - (1 if a.day < b.day else 0) + 12) % 12 -%}
+            {%- set month_new = (((a.month - mth) + 12) % 12) | default(12, true) -%}
+            {%- set day_max = ((a.replace(day=1, month=month_new) + timedelta(days=31)).replace(day=1) - timedelta(days=1)).day -%}
+            {%- set a_temp = a.replace(month=month_new, day=[a.day, day_max]|min) -%}
+            {%- set a = a_temp if a_temp <= a else a_temp.replace(year=a.year-1) -%}
+          {#- set other time period variables #}
+            {%- set s = (a - b).total_seconds() -%}
+            {%- set wks = (s // w) | int -%}
+            {%- set day = ((s - wks * w) // d) | int -%}
+            {%- set hrs = ((s - wks * w - day * d) // h) | int -%}
+            {%- set min = ((s - wks * w - day * d - hrs * h) // m) | int -%}
+            {%- set sec = (s - wks * w - day * d - hrs * h - min * m) | int -%}
+          {# output result #}
+            {{- dict(y=yrs, mo=mth, w=wks, d=day, h=hrs, m=min, s=sec) | to_json -}}
+        {%- endmacro -%}
+
+        {# macro to output a timedelta in a readable format #}
+        {%- macro relative_time_plus(date, parts, week, time, abbr, language, compare_date, verbose) -%}
+          {#- set defaults for input if not entered #}
+            {%- set date = date | as_datetime if date is string or date is number else date -%}
+            {%- set compare_date = compare_date if compare_date is defined else now() -%}
+            {%- set compare_date = compare_date | as_datetime if compare_date is string or compare_date is number else compare_date -%}
+            {%- set phrases = time_period_phrases -%}
+          {#- select correct phrases bases on language input #}
+            {%- set language = language | default() -%}
+            {%- set languages = phrases | map(attribute='language') | list -%}
+            {%- set language = iif(language in languages, language, languages | first) -%}
+            {%- set phr = phrases | selectattr('language', 'eq', language) | map(attribute='phrases') | list | first -%}
+          {#- check for valid datetime (using as_timestamp) #}
+            {%- if as_timestamp(date, default='error') != 'error' -%}
+              {%- set date = date | as_local -%}
+              {%- set parts = parts | default(1) | int(1) -%}
+              {%- set week = week | default(true) | bool(true) -%}
+              {%- set time = time | default(true) | bool(true) -%}
+              {%- set abbr = abbr | default(false) | bool(false) or verbose | default(false) | bool(false) -%}
+              {%- set language = language | default('first') -%}
+              {%- set date = date if time else today_at().replace(year=date.year, month=date.month, day=date.day) -%}
+              {%- set tp = time_split(date, time, compare_date) | from_json -%}
+            {#- create mapping #}
+              {%- set wk = tp.w if week else 0 -%}
+              {%- set dy = tp.d if week else tp.d + tp.w * 7 -%}
+              {%- set dur = dict(
+                                  yrs = dict(a=tp.y, d=phr.year[2] if abbr else phr.year[1] if tp.y > 1 else phr.year[0]),
+                                  mth = dict(a=tp.mo, d=phr.month[2] if abbr else phr.month[1] if tp.mo > 1 else phr.month[0]),
+                                  wks = dict(a=wk, d=phr.week[2] if abbr else phr.week[1] if wk > 1 else phr.week[0]),
+                                  day = dict(a=dy, d=phr.day[2] if abbr else phr.day[1] if dy > 1 else phr.day[0]),
+                                  hrs = dict(a=tp.h, d=phr.hour[2] if abbr else phr.hour[1] if tp.h > 1 else phr.hour[0]),
+                                  min = dict(a=tp.m, d=phr.minute[2] if abbr else phr.minute[1] if tp.m > 1 else phr.minute[0]),
+                                  sec = dict(a=tp.s, d=phr.second[2] if abbr else phr.second[1] if tp.s > 1 else phr.second[0])
+                                )
+              -%}
+            {#- find first non zero time period #}
+              {%- set first = dur.items() | rejectattr('1.a', 'eq', 0) | map(attribute='0') | first -%}
+            {#- set variable to reject weeks if set and find index of first non zero time period #}
+              {%- set week_reject = 'wks' if not week -%}
+              {%- set index = (dur.keys() | reject('eq', week_reject) | list).index(first) -%}
+            {#-select non zero items based on input #}
+              {%- set items = (dur.keys() | reject('eq', week_reject) | list)[index:index + parts] -%}
+              {%- set selection = dur.items() | selectattr('0', 'in', items) | rejectattr('1.a', 'eq', 0) | list -%}
+            {#- create list of texts per selected time period #}
+              {%- set ns = namespace(text = []) -%}
+              {%- for i in selection -%}
+                {%- set ns.text = ns.text + [ i[1].a ~ ' ' ~ i[1].d] -%} 
+              {%- endfor -%}
+            {#- join texts in a string, using phr.combine for the last item #}
+              {{- ns.text[:-1] | join(', ') ~ phr.combine ~ ns.text[-1] if ns.text | count > 1 else ns.text | first -}}
+            {%- else -%}
+              {{- phr.error -}}
+            {%- endif -%}
+        {%- endmacro -%}              
+        {%- macro event_to_dict(event) %}
+          {%- set now_ts = now() | as_timestamp -%}
+          {%- set start_ts = event.start | as_timestamp | int %}
+          {%- set end_ts = event.end | as_timestamp | int %}
+          {%- set rel_start = relative_time_plus(event.start,2) %}
+          {%- set rel_end = relative_time_plus(event.end,2) %}
+          {%- set has_started = iif(now_ts > start_ts,1,0) -%}
+          {%- set has_ended = iif(now_ts > end_ts,1,0) -%}
+          {%- set start_min = ((start_ts - now_ts) / 60) | int -%}
+          {%- set end_min = ((end_ts - now_ts) / 60 ) | int -%}
+          {%- set starts_in_1 = iif((0 < start_min) and (start_min <= 1),1,0) -%}
+          {%- set starts_in_5 = iif((0 < start_min) and (start_min <= 5),1,0) -%}
+          {%- set starts_in_10 = iif((0 < start_min) and (start_min <= 10),1,0) -%}
+          {
+             "summary": "{{event.summary}}"
+             ,"location": "{{event.location}}"
+             ,"start_ts":{{start_ts}}
+             ,"end_ts":{{end_ts}}
+             ,"rel_start":"{{rel_start}}"
+             ,"rel_end":"{{rel_end}}"
+             ,"has_started":{{has_started}}
+             ,"has_ended":{{has_ended}}
+             ,"start_min":{{ start_min}}
+             ,"end_min":{{ end_min}}
+
+            ,"starts_in_1": {{starts_in_1}}
+            ,"starts_in_5": {{starts_in_5}}
+            ,"starts_in_10": {{starts_in_10}}
+
+          }
+        {%- endmacro %}
+        {%- set ns = namespace(parsed_events=[]) %}
+        {%- for event in cal_events.events %}
+        {%- set e_dict = event_to_dict(event) %}
+
+        {%- set ns.parsed_events = ns.parsed_events + [ (e_dict | from_json )] %}
+        {%- endfor -%}
+        {{ns.parsed_events | sort(attribute='start_ts')}}
+
+      current_events: >-
+        {%- set ns = namespace(current_events=[]) %}
+          {%- for event in event_list  %}
+          
+            {%- if event['start_min'] <= 0 %}
+              {%- set ns.current_events = ns.current_events + [ event ] %}
+            {%- endif %}
+        {%- endfor -%}
+        {{ns.current_events}}
+      current_events_count: "{{current_events | length }}"
+      future_events: >-
+        {%- set ns = namespace(future_events=[]) %}
+          {%- for event in event_list  %}
+          
+            {%- if event['start_min'] > 0 %}
+              {%- set ns.future_events = ns.future_events + [ event ] %}
+            {%- endif %}
+        {%- endfor -%}
+        {{ns.future_events}}
+
+      next_events: >-
+        {%- set next_event_start_ts = future_events[0]['start_ts'] -%}
+        {%- set ns = namespace(next_events=[]) %}
+          {%- for event in event_list  %}
+          
+            {%- if event['start_ts'] == next_event_start_ts %}
+              {%- set ns.next_events = ns.next_events + [ event ] %}
+            {%- endif %}
+        {%- endfor -%}
+        {{ns.next_events}}
+      next_events_count: "{{ next_events | length }}"
+      event_payload: >-
+        { "current_events":{{current_events}}
+          ,"current_events_count":{{current_events_count}}
+          ,"next_events":{{next_events}}
+          ,"next_events_count":{{next_events_count}}
+          ,"future_events":{{future_events}}
+          ,"events":{{event_list}}
+        }
+
+      indicator_color_blink: >-
+        {% macro get_color_blink(data) %}
+          {%- if data['current_events_count'] > 0 -%}
+            {'debug': 'active', 'color':{{color_active}}, 'blink': {{blink_active}}}
+          {%- elif data['next_events_count'] > 0 -%}            
+            {%- if data['next_events'][0]['starts_in_1'] -%}
+              {'debug': '1 min', 'color':{{color_1_min_warning}}, 'blink': {{blink_1_min_warning}}}
+            {%- elif data['next_events'][0]['starts_in_5'] -%}
+              {'debug': '5 min', 'color':{{color_5_min_warning}}, 'blink': {{blink_5_min_warning}}}
+            {%- elif data['next_events'][0]['starts_in_10'] -%}
+              {'debug': '10 min', 'color':{{color_10_min_warning}}, 'blink': {{blink_10_min_warning}}}
+            {%- else -%}
+              {'debug': 'none', 'color':[0,0,0], 'blink':0}
+            {% endif %}          
+          {%- else -%}
+            {'debug': 'none', 'color':[0,0,0], 'blink':0}
+          {%- endif -%}
+        {% endmacro -%}
+        {{ get_color_blink(event_payload)}}
+  - repeat:
+      for_each: "{{devices_topics}}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{repeat.item}}"
+            payload: >-
+              { 
+                "color": {{indicator_color_blink['color']}}
+                ,"blink":{{indicator_color_blink['blink']}}
+                ,"debug":"{{indicator_color_blink['debug']}}"
+              }
