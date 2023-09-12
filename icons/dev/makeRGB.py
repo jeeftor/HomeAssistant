@@ -23,8 +23,8 @@ class RGBMaker:
         # Get the dimensions of the frame
         width, height = rgba_frame.size
 
-        # Create an empty list to store the RGB565 pixel values
-        rgb565_data = []
+        # Create an empty list to store the RGB888 pixel values
+        rgb888_data = []
 
         # Iterate over each pixel in the frame
         for y in range(height):
@@ -38,12 +38,13 @@ class RGBMaker:
 
                 # Convert the RGB values to RGB565 format
                 rgb565 = ((r & 0b11111000) << 8) | ((g & 0b11111100) << 3) | (b >> 3)
+                # Convert the RGB values to RGB888 format
                 rgb888 = (r << 16) | (g << 8) | b
 
-                # Append the RGB565 value to the list
-                rgb565_data.append(rgb888)
+                # Append the RGB888 value to the list
+                rgb888_data.append(rgb888)
 
-        return rgb565_data
+        return rgb888_data
 
     def clean_frame(self, frame):
         # Clean the frame to ensure all frames have the same size and black background
@@ -61,8 +62,8 @@ class RGBMaker:
             )
             return []
 
-        # Create an empty list to store the RGB565 pixel values
-        rgb565_data_frames = []
+        # Create an empty list to store the RGB888 pixel values
+        rgb888_data_frames = []
 
         self.width, self.height = gif_image.size
 
@@ -75,11 +76,11 @@ class RGBMaker:
                 # Clean the frame to ensure all frames have the same size and black background
                 cleaned_frame = self.clean_frame(frame)
 
-                # Convert the cleaned frame to RGB565 format
-                rgb565_data = self.frame_to_rgb(cleaned_frame, background_value)
+                # Convert the cleaned frame to RGB888 format
+                rgb888_data = self.frame_to_rgb(cleaned_frame, background_value)
 
-                # Append the current frame's RGB565 data to the list of frames
-                rgb565_data_frames.append(rgb565_data)
+                # Append the current frame's RGB888 data to the list of frames
+                rgb888_data_frames.append(rgb888_data)
 
                 # Move to the next frame
                 gif_image.seek(gif_image.tell() + 1)
@@ -87,7 +88,7 @@ class RGBMaker:
         except EOFError:
             pass
 
-        return rgb565_data_frames
+        return rgb888_data_frames
 
     def print_color_palette_from_data(self, data, background_value=0):
         print("Color Palette From Data:")
@@ -99,25 +100,25 @@ class RGBMaker:
         # Count the occurrences of each color
         color_counts = {color: data.count(color) for color in unique_colors}
 
-        for rgb565 in unique_colors:
-            # Extract the RGB components from RGB565 format
-            r = (rgb565 >> 16) & 0xFF
-            g = (rgb565 >> 8) & 0xFF
-            b = rgb565 & 0xFF
+        for rgb888 in unique_colors:
+            # Extract the RGB components from RGB888 format
+            r = (rgb888 >> 16) & 0xFF
+            g = (rgb888 >> 8) & 0xFF
+            b = rgb888 & 0xFF
 
             # Convert the RGB components to hexadecimal
-            hex_value = "0x{:04X}".format(rgb565)
+            hex_value = "0x{:04X}".format(rgb888)
 
             # Format the columns for alignment
             swatch_col = "\033[48;2;{};{};{}m  \033[0m".format(r, g, b)
-            rgb565_col = "{:<7}".format(rgb565)
+            rgb888_col = "{:<7}".format(rgb888)
             hex_col = "{:<9}".format(hex_value)
-            count_col = "{:<5}".format(color_counts[rgb565])
+            count_col = "{:<5}".format(color_counts[rgb888])
 
             # Print the color information, count, and ASCII swatch
             print(
                 "Swatch: {} RGB888: {} Hex: {} Count: {}".format(
-                    swatch_col, rgb565_col, hex_col, count_col
+                    swatch_col, rgb888_col, hex_col, count_col
                 )
             )
         print("\n")
@@ -145,11 +146,11 @@ class RGBMaker:
                 # Get the RGB values
                 r, g, b = palette[i : i + 3]
 
-                # Convert RGB to RGB565 format
-                rgb565 = ((r & 0b11111000) << 8) | ((g & 0b11111100) << 3) | (b >> 3)
+                # Convert RGB to RGB888 format
+                rgb888 = ((r & 0b11111000) << 8) | ((g & 0b11111100) << 3) | (b >> 3)
 
-                # Add the RGB565 value to the set of unique colors
-                unique_colors.add(rgb565)
+                # Add the RGB888 value to the set of unique colors
+                unique_colors.add(rgb888)
 
             # Print the unique colors and their ASCII swatches
             self.print_color_palette_from_data(unique_colors)
@@ -160,17 +161,17 @@ class RGBMaker:
         # Replace the old value with the new value in the data list
         return [new_value if value == old_value else value for value in data]
 
-    def print_ascii_swatches(self, rgb565_data):
+    def print_ascii_swatches(self, rgb888_data):
         print("ASCII Swatches:")
 
         for y in range(self.height):
             for x in range(self.width):
-                rgb565 = rgb565_data[y * self.width + x]
+                rgb888 = rgb888_data[y * self.width + x]
 
-                # Extract the RGB components from RGB565 format
-                r = (rgb565 >> 16) & 0xFF
-                g = (rgb565 >> 8) & 0xFF
-                b = rgb565 & 0xFF
+                # Extract the RGB components from RGB888 format
+                r = (rgb888 >> 16) & 0xFF
+                g = (rgb888 >> 8) & 0xFF
+                b = rgb888 & 0xFF
 
                 # Determine the ANSI color code based on the RGB components
                 ansi_color_code = 16 + (36 * (r // 51)) + (6 * (g // 51)) + (b // 51)
@@ -180,15 +181,15 @@ class RGBMaker:
 
             print()  # Move to the next line after printing each row
 
-    def print_rgb565_data(self, rgb565_data, colors=True):
-        print("RGB565 Data ({}x{}):".format(self.width, self.height))
+    def print_rgb888_data(self, rgb888_data, colors=True):
+        print("RGB888 Data ({}x{}):".format(self.width, self.height))
 
         max_value_length = len(
-            str(max(rgb565_data))
-        )  # Calculate the maximum length of RGB565 values
+            str(max(rgb888_data))
+        )  # Calculate the maximum length of RGB888 values
 
-        for i in range(0, len(rgb565_data), self.width):
-            row = rgb565_data[i : i + self.width]
+        for i in range(0, len(rgb888_data), self.width):
+            row = rgb888_data[i: i + self.width]
             row_str = ""
 
             for value in row:
@@ -219,18 +220,18 @@ class RGBMaker:
 
             row_str = row_str.rstrip(", ")
 
-            if i < len(rgb565_data) - self.width:
+            if i < len(rgb888_data) - self.width:
                 row_str += ","
             print(row_str)
 
-    def generate_test_data(self, rgb565_data):
+    def generate_test_data(self, rgb888_data):
         test_data = {
             "stack": False,
-            "draw": [{"db": [0, 0, self.width, self.height, rgb565_data]}],
+            "draw": [{"db": [0, 0, self.width, self.height, rgb888_data]}],
         }
         return test_data
 
-    def generate_macro(self, rgb565_data, frame_index):
+    def generate_macro(self, rgb888_data, frame_index):
         macro_name = f"{self.stripped_filename}_{frame_index}"
 
         header = "{%-  macro " + macro_name + "(x,y) %}"
@@ -241,7 +242,7 @@ class RGBMaker:
             + ", "
             + str(self.height)
             + ", "
-            + str(rgb565_data)
+            + str(rgb888_data)
             + "]}"
         )
         footer = "{%- endmacro %}"
@@ -260,30 +261,30 @@ def main():
         rgb_maker = RGBMaker(gif_filename)
 
         # Call the make_rgb function with the GIF filename
-        rgb565_data_frames = rgb_maker.make_rgb()
+        rgb888_data_frames = rgb_maker.make_rgb()
 
-        if not rgb565_data_frames:
+        if not rgb888_data_frames:
             continue
 
-        frame_count = len(rgb565_data_frames)
+        frame_count = len(rgb888_data_frames)
 
         # Print the color palette and RGB565 data for each frame
         print(f"--- Color Palette and RGB565 Data for {gif_filename} ---")
 
-        for frame_index, rgb565_data in enumerate(rgb565_data_frames):
+        for frame_index, rgb888_data in enumerate(rgb888_data_frames):
             print(f"Frame {frame_index + 1} of {frame_count}:")
-            rgb_maker.print_color_palette_from_data(rgb565_data)
-            rgb_maker.print_ascii_swatches(rgb565_data)
+            rgb_maker.print_color_palette_from_data(rgb888_data)
+            rgb_maker.print_ascii_swatches(rgb888_data)
 
             print(f"--- Raw Data for Frame {frame_index + 1} of {frame_count} ---")
-            rgb_maker.print_rgb565_data(rgb565_data, colors=True)
+            rgb_maker.print_rgb888_data(rgb888_data, colors=True)
 
             # Generate the test data dictionary for the frame
-            test_data = rgb_maker.generate_test_data(rgb565_data)
+            test_data = rgb_maker.generate_test_data(rgb888_data)
             test_data_json = json.dumps(test_data)
 
             macro = rgb_maker.generate_macro(
-                rgb565_data=rgb565_data, frame_index=frame_index
+                rgb888_data=rgb888_data, frame_index=frame_index
             )
 
             print("\n--- Drawing Macro Frame {frame_index + 1} of {frame_count} ---")
