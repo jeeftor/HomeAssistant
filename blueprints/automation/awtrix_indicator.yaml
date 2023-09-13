@@ -525,7 +525,7 @@ action:
               {
                 "color": {{indicator_color_blink['color']}}
                 ,"blink":{{indicator_color_blink['blink']}}
-                ,"fade":{{indicator_color_blink['blink']}}
+                ,"fade":{{indicator_color_blink['fade']}}
               }
   - if:
       - condition: template
