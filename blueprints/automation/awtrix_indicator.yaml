@@ -1,6 +1,6 @@
 ---
 blueprint:
-  name: AWTRIX Calendar 📅️ Notifications
+  name: AWTRIX Calendar 📅️ Notifications + Indicators 🚥️
   description: >
     Monitors the state of a calendar and sets the indicator based on the status of events
   domain: automation
@@ -10,15 +10,17 @@ blueprint:
       description: Select the Awtrix light
       selector:
         device:
-          integration: mqtt
-          manufacturer: Blueforcer
-          model: AWTRIX Light
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX Light
           multiple: true
     calendar:
       name: Calendar
       selector:
         entity:
-          domain: calendar
+          filter:
+            domain: calendar
     indicator:
       name: Indicator Light
       description: Which indicator light to use
@@ -31,6 +33,33 @@ blueprint:
               value: "2"
             - label: Bottom Light(3)
               value: "3"
+
+    show_next_meeting:
+      name: Show upcoming meeting reminders
+      description: >-
+        Print out an upcoming meeting reminder/alert etc
+      selector:
+        boolean:
+      default: false
+    next_meeting_time_color:
+      name: Next Meeting Time Color
+      description: Select the color for the time text for next-meeting notifications
+      selector:
+        color_rgb:
+      default: [0, 0, 255]
+    next_meeting_text_color:
+      name: Next Meeting Text Color
+      description: Text (summary) of next meeting color
+      selector:
+        color_rgb:
+      default: [120, 255, 120]
+    next_meeting_separator_color:
+      name: Next Meeting seperator Color
+      description: If multiple meetings occur they will be separated by a `/` character. Please select the color
+      selector:
+        color_rgb:
+      default: [0, 255, 0]
+
     color_active:
       name: Activie Color
       description: Color to use when in a meeting
@@ -195,6 +224,10 @@ variables:
   fade_1_min_warning: !input color_1_min_warning_fade
   fade_5_min_warning: !input color_5_min_warning_fade
   fade_10_min_warning: !input color_10_min_warning_fade
+
+  next_meeting_time_color: !input next_meeting_time_color
+  next_meeting_text_color: !input next_meeting_text_color
+  next_meeting_separator_color: !input next_meeting_separator_color
 
   calendar: !input calendar
   cal_state: "{{states(calendar)}}"
@@ -409,6 +442,20 @@ action:
         {%- endif%}
       next_events_count: "{{ next_events | length }}"
       next_events_text: "{{ next_events | map(attribute='summary') | join(' / ') }}"
+      next_events_text_payload: >-
+        {%- set join_str = '", "c":' ~ next_meeting_text_color ~'},{"t":"/", "c":' ~ next_meeting_separator_color ~'}, {"t":"' %}        
+        {{'{"t":"' ~ (next_events | map(attribute='summary') | join(join_str)) ~ '", "c":' ~ next_meeting_text_color ~'}' }}
+      next_events_payload: >-
+        {%- if next_events_count > 0 %}
+          {%- set min_text = next_events[0].start_min ~ ' m ' %}
+          {"text": [
+            {"t": "{{min_text}}", "c": {{next_meeting_time_color}}},
+            {{next_events_text_payload}}            
+          ]}
+        {%- else %}
+        {}
+        {%- endif %}
+
       event_payload: >-
         { "current_events":{{current_events}}
           ,"current_events_count":{{current_events_count}}
@@ -452,3 +499,9 @@ action:
                 ,"blink":{{indicator_color_blink['blink']}}
                 ,"fade":{{indicator_color_blink['blink']}}
               }
+        - service: mqtt.publish
+          data:
+            qos: 0
+            topic: dev-test
+            payload: >-
+              {{next_events_payload}}
