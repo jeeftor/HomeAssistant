@@ -341,7 +341,7 @@ action:
           {%- set starts_in_10 = iif((0 < start_min) and (start_min <= 10),1,0) -%}
           {
              "summary": "{{event.summary}}"
-             ,"location": "{{event.location}}"
+             ,"location":{{ ((event.location | replace('\n', ' ')) | to_json)}} 
              ,"start_ts":{{start_ts}}
              ,"end_ts":{{end_ts}}
              ,"rel_start":"{{rel_start}}"
@@ -364,6 +364,13 @@ action:
         {%- set ns.parsed_events = ns.parsed_events + [ (e_dict | from_json )] %}
         {%- endfor -%}
         {{ns.parsed_events | sort(attribute='start_ts')}}
+      locations: >-
+        {%- set ns = namespace(locations=[]) %}        
+        {%- for event in cal_events.events %}
+          {% set loc = {"locations": ((event.location | replace('\n', ' ')) | to_json) } %}
+          {%- set ns.locations = ns.locations + [loc] + [loc] %}
+        {%- endfor -%}
+        {{ns.locations}}
 
       current_events: >-
         {%- set ns = namespace(current_events=[]) %}
@@ -405,7 +412,7 @@ action:
           ,"current_events_count":{{current_events_count}}
           ,"next_events":{{next_events}}
           ,"next_events_count":{{next_events_count}}
-          ,"future_events":{{future_events}},
+          ,"future_events":{{future_events}}
           ,"future_events_count":{{future_events_count}}
           ,"events":{{event_list}}
         }
@@ -438,7 +445,7 @@ action:
             retain: false
             topic: "{{repeat.item}}"
             payload: >-
-              { 
+              {
                 "color": {{indicator_color_blink['color']}}
                 ,"blink":{{indicator_color_blink['blink']}}
                 ,"fade":{{indicator_color_blink['blink']}}
