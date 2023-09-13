@@ -46,13 +46,13 @@ blueprint:
       description: Select the color for the time text for next-meeting notifications
       selector:
         color_rgb:
-      default: [0, 0, 255]
+      default: [255, 170, 17]
     next_meeting_text_color:
       name: Next Meeting Text Color
       description: Text (summary) of next meeting color
       selector:
         color_rgb:
-      default: [120, 255, 120]
+      default: [170, 255, 51]
     next_meeting_separator_color:
       name: Next Meeting seperator Color
       description: If multiple meetings occur they will be separated by a `/` character. Please select the color
