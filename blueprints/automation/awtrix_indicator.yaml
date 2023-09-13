@@ -3,6 +3,8 @@ blueprint:
   name: AWTRIX Calendar 📅️ Notifications + Indicators 🚥️
   description: >
     Monitors the state of a calendar and sets the indicator based on the status of events
+
+    ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/annotated_calendar.png)
   domain: automation
   input:
     awtrix:
@@ -42,19 +44,19 @@ blueprint:
         boolean:
       default: false
     next_meeting_time_color:
-      name: Next Meeting Time Color
+      name: Next Meeting - Time Color
       description: Select the color for the time text for next-meeting notifications
       selector:
         color_rgb:
       default: [255, 170, 17]
     next_meeting_text_color:
-      name: Next Meeting Text Color
+      name: Next Meeting - Text Color
       description: Text (summary) of next meeting color
       selector:
         color_rgb:
       default: [170, 255, 51]
     next_meeting_separator_color:
-      name: Next Meeting seperator Color
+      name: Next Meeting - Separator Color
       description: If multiple meetings occur they will be separated by a `/` character. Please select the color
       selector:
         color_rgb:
@@ -289,7 +291,7 @@ action:
 
         {#
           macro to split a timedelta in years, months, weeks, days, hours, minutes, seconds
-          used by the relative time plus macro, set up as a seperate macro so it can be reused
+          used by the relative time plus macro, set up as a separator macro so it can be reused
         #}
         {%- macro time_split(date, time, compare_date) -%}
           {# set defaults for variables #}
