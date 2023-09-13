@@ -210,6 +210,8 @@ blueprint:
 
 mode: queued
 variables:
+  show_next_meeting: !input show_next_meeting
+
   color_active: !input color_active
   color_1_min_warning: !input color_1_min_warning
   color_5_min_warning: !input color_5_min_warning
@@ -250,6 +252,20 @@ variables:
     {%- for device_id in device_ids %}
       {%- set device=get_device_topic(device_id)|replace(' ','') %}
       {% set ns.devices = ns.devices + [ device ~ '/indicator' ~ light_suffix] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list}}
+
+  next_meeting_base_topic: jeef_next_meeting
+
+  next_meeting_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ next_meeting_base_topic] %}
     {%- endfor %}
     {{ ns.devices | reject('match','unavailable') | list}}
 
@@ -445,13 +461,25 @@ action:
       next_events_text_payload: >-
         {%- set join_str = '", "c":' ~ next_meeting_text_color ~'},{"t":"/", "c":' ~ next_meeting_separator_color ~'}, {"t":"' %}        
         {{'{"t":"' ~ (next_events | map(attribute='summary') | join(join_str)) ~ '", "c":' ~ next_meeting_text_color ~'}' }}
+      next_meeting_time_text: >-
+        {%- if next_events_count > 0 -%}
+        {%- set min = (next_events[0].start_min | float) -%}
+        {%- set hr = (min / 60) | float | round(1) -%}
+          {%- if min > 60 -%}
+          {{hr}} hr
+          {%- else -%}
+          {{min}} min
+          {%- endif -%}
+        {%- endif -%}
+
       next_events_payload: >-
         {%- if next_events_count > 0 %}
-          {%- set min_text = next_events[0].start_min ~ ' m ' %}
+          {%- set min_text = next_events[0].start_min ~ 'min ' %}
           {"text": [
-            {"t": "{{min_text}}", "c": {{next_meeting_time_color}}},
+            {"t": "{{next_meeting_time_text}}", "c": {{next_meeting_time_color}}},
             {{next_events_text_payload}}            
-          ]}
+          ],
+          "lifetime":30}
         {%- else %}
         {}
         {%- endif %}
@@ -499,9 +527,24 @@ action:
                 ,"blink":{{indicator_color_blink['blink']}}
                 ,"fade":{{indicator_color_blink['blink']}}
               }
-        - service: mqtt.publish
-          data:
-            qos: 0
-            topic: dev-test
-            payload: >-
-              {{next_events_payload}}
+  - if:
+      - condition: template
+        value_template: "{{show_next_meeting}}"
+    then:
+      - repeat:
+          for_each: "{{next_meeting_topics}}"
+          sequence:
+            - service: mqtt.publish
+              data:
+                qos: 0
+                retain: false
+                topic: "{{repeat.item}}"
+                payload: >-
+                  {{next_events_payload}}
+
+  - service: mqtt.publish
+    data:
+      qos: 0
+      topic: dev-test
+      payload: >-
+        {{next_events_payload}}
