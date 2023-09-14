@@ -100,11 +100,23 @@ blueprint:
       default: 0
 
     color_1_min_warning:
-      name: 1 Minute Warning
+      name: 1 Minute Warning ⏰️1️⃣️
       description: Color to indiciate a 1 Minute Warning prior to meeting start
       selector:
         color_rgb:
       default: [255, 80, 0]
+    sound_1_min_warning:
+      name: 1 Minute Warning Tone 🔊1️⃣️
+      description: >-
+
+        This is an RTTTL string to send on the 1 minute warning - leave blank to disable
+
+            chime:d=3,o=5,b=160:a5
+            StarWars/Imp:d=4,o=5,b=112:8d.,16p,8d.,16p,8d.,16p,8a#4,16p,16f,8d.,16p,8a#4,16p,16f,d.,8p,8a.,16p,8a.,16p,8a.,16p,8a#,16p,16f,8c#.,16p,8a#4,16p,16f,d.,8p,8d.6,16p,8d,16p,16d,8d6,8p,8c#6,16p,16c6,16b,16a#,8b,8p,16d#,16p,8g#,8p,8g,16p
+
+      selector:
+        text:
+      default: ""
     color_1_min_warning_fade:
       name: Fade 1 min warning color
       description:
@@ -137,11 +149,20 @@ blueprint:
       default: 0
 
     color_5_min_warning:
-      name: 5 minute Warning
+      name: 5 minute Warning ⏰️5️⃣️
       description: Color to indiciate a 5 minute Warning prior to meeting start
       selector:
         color_rgb:
       default: [255, 125, 0]
+    sound_5_min_warning:
+      name: 5 Minute Warning Tone 🔊5️⃣️
+      description: >-
+        This is an RTTTL string to send on the 5 minute warning - leave blank to disable
+
+            chime:d=3,o=5,b=160:a5
+      selector:
+        text:
+      default: ""
     color_5_min_warning_fade:
       name: Fade 5 min warning color
       description:
@@ -174,7 +195,7 @@ blueprint:
       default: 0
 
     color_10_min_warning:
-      name: 10 Minute Warning
+      name: 10 Minute Warning ⏰️🔟️
       description: Color to indiciate a 10 Minute Warning prior to meeting start
       selector:
         color_rgb:
@@ -260,21 +281,28 @@ variables:
   next_meeting_base_topic: jeef_next_meeting
 
   next_meeting_topics: >-
-    {%- macro get_device_topic(device_id) %}
-    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
-    {%- endmacro %}
-
-    {%- set ns = namespace(devices=[]) %}
-    {%- for device_id in device_ids %}
-      {%- set device=get_device_topic(device_id)|replace(' ','') %}
-      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ next_meeting_base_topic] %}
-    {%- endfor %}
-    {{ ns.devices | reject('match','unavailable') | list}}
-
+    {{devices_topics | regex_replace(find='indicator.', replace='custom/' ~ next_meeting_base_topic, ignorecase=False) }}
+  sound_topics: >-
+    {{devices_topics | regex_replace(find='indicator.', replace='rtttl', ignorecase=False) }}
 trigger:
   - platform: time_pattern
     seconds: /5
-
+    id: temporal
+  - platform: calendar
+    event: start
+    offset: "-0:10:0"
+    entity_id: calendar.mitre
+    id: 10min
+  - platform: calendar
+    event: start
+    offset: "-0:5:0"
+    entity_id: calendar.mitre
+    id: 5min
+  - platform: calendar
+    event: start
+    offset: "-0:1:0"
+    entity_id: calendar.mitre
+    id: 1min
 action:
   - service: calendar.list_events
     data:
@@ -473,7 +501,6 @@ action:
           {{min | replace('.0','')}} min
           {%- endif -%}
         {%- endif -%}
-
       next_events_payload: >-
         {%- if next_events_count > 0 %}
           {%- set min_text = next_events[0].start_min ~ 'min ' %}
@@ -485,7 +512,6 @@ action:
         {%- else %}
         {}
         {%- endif %}
-
       event_payload: >-
         { "current_events":{{current_events}}
           ,"current_events_count":{{current_events_count}}
@@ -495,7 +521,6 @@ action:
           ,"future_events_count":{{future_events_count}}
           ,"events":{{event_list}}
         }
-
       indicator_color_blink: >-
         {% macro get_color_blink(data) %}
           {%- if data['current_events_count'] > 0 -%}
@@ -515,6 +540,11 @@ action:
           {%- endif -%}
         {% endmacro -%}
         {{ get_color_blink(event_payload)}}
+      sound_payload: >-
+        {%- if trigger.id != 'temporal' %}
+        chime:d=3,o=5,b=160:a5
+        {%- endif %}
+
   - repeat:
       for_each: "{{devices_topics}}"
       sequence:
@@ -543,10 +573,20 @@ action:
                 topic: "{{repeat.item}}"
                 payload: >-
                   {{next_events_payload}}
+  - repeat:
+      for_each: "{{sound_topics}}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{repeat.item}}"
+            payload: >-
+              {{sound_payload}}
 
   - service: mqtt.publish
     data:
       qos: 0
       topic: dev-test
       payload: >-
-        {{next_events_payload}}
+        {{sound_payload}}
