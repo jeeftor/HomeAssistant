@@ -99,24 +99,67 @@ blueprint:
           mode: slider
       default: 0
 
+    #----------------- Warning Sounds
+    section_heading_sound:
+      name: "RTTTL Selection"
+      description: >
+
+        # Sound Selection below
+
+        Here are some sample sounds you could use:
+
+
+            chime:d=3,o=5,b=160:a5
+            5beeps:d=2,o=5,b=125: 8c, 8p, 8c, 8p, 8c, 8p, 8c, 8p, 8c
+            StarWars/Imp:d=4,o=5,b=112:8d.,16p,8d.,16p,8d.,16p,8a#4,16p,16f,8d.,16p,8a#4,16p,16f,d.,8p,8a.,16p,8a.,16p,8a.,16p,8a#,16p,16f,8c#.,16p,8a#4,16p,16f,d.,8p,8d.6,16p,8d,16p,16d,8d6,8p,8c#6,16p,16c6,16b,16a#,8b,8p,16d#,16p,8g#,8p,8g,16p
+
+      selector:
+        boolean:
+      default: false
+    sound_0_min_warning:
+      name: 🔊 0 Minute Warning Tone 0️⃣️
+      description: >-
+        Meeting start tone!!!
+      selector:
+        text:
+      default: ""
+    sound_1_min_warning:
+      name: 🔊 1 Minute Warning Tone 1️⃣️
+      selector:
+        text:
+      default: ""
+    sound_5_min_warning:
+      name: 🔊 5 Minute Warning Tone 5️⃣️
+      selector:
+        text:
+      default: ""
+    sound_10_min_warning:
+      name: 🔊 10 Minute Warning Tone 🔟️
+      selector:
+        text:
+      default: ""
+    sound_15_min_warning:
+      name: 🔊 5 Minute Warning Tone 1️⃣️5️⃣️
+      selector:
+        text:
+      default: ""
+    section_heading_color:
+      name: "Indicator Selection"
+      description: >
+
+        # The following sections will allow you to customize your indicators
+      selector:
+        boolean:
+      default: false
+    #----------------- Warning Colors & Fades
+
     color_1_min_warning:
-      name: 1 Minute Warning ⏰️1️⃣️
+      name: 🎨️ 1 Minute Warning ⏰️1️⃣️
       description: Color to indiciate a 1 Minute Warning prior to meeting start
       selector:
         color_rgb:
       default: [255, 80, 0]
-    sound_1_min_warning:
-      name: 1 Minute Warning Tone 🔊1️⃣️
-      description: >-
 
-        This is an RTTTL string to send on the 1 minute warning - leave blank to disable
-
-            chime:d=3,o=5,b=160:a5
-            StarWars/Imp:d=4,o=5,b=112:8d.,16p,8d.,16p,8d.,16p,8a#4,16p,16f,8d.,16p,8a#4,16p,16f,d.,8p,8a.,16p,8a.,16p,8a.,16p,8a#,16p,16f,8c#.,16p,8a#4,16p,16f,d.,8p,8d.6,16p,8d,16p,16d,8d6,8p,8c#6,16p,16c6,16b,16a#,8b,8p,16d#,16p,8g#,8p,8g,16p
-
-      selector:
-        text:
-      default: ""
     color_1_min_warning_fade:
       name: Fade 1 min warning color
       description:
@@ -149,20 +192,12 @@ blueprint:
       default: 0
 
     color_5_min_warning:
-      name: 5 minute Warning ⏰️5️⃣️
+      name: 🎨️ 5 minute Warning ⏰️5️⃣️
       description: Color to indiciate a 5 minute Warning prior to meeting start
       selector:
         color_rgb:
       default: [255, 125, 0]
-    sound_5_min_warning:
-      name: 5 Minute Warning Tone 🔊5️⃣️
-      description: >-
-        This is an RTTTL string to send on the 5 minute warning - leave blank to disable
 
-            chime:d=3,o=5,b=160:a5
-      selector:
-        text:
-      default: ""
     color_5_min_warning_fade:
       name: Fade 5 min warning color
       description:
@@ -195,7 +230,7 @@ blueprint:
       default: 0
 
     color_10_min_warning:
-      name: 10 Minute Warning ⏰️🔟️
+      name: 🎨️ 10 Minute Warning ⏰️🔟️
       description: Color to indiciate a 10 Minute Warning prior to meeting start
       selector:
         color_rgb:
@@ -284,6 +319,20 @@ variables:
     {{devices_topics | regex_replace(find='indicator.', replace='custom/' ~ next_meeting_base_topic, ignorecase=False) }}
   sound_topics: >-
     {{devices_topics | regex_replace(find='indicator.', replace='rtttl', ignorecase=False) }}
+  sound_0_min_warning: !input sound_0_min_warning
+  sound_1_min_warning: !input sound_1_min_warning
+  sound_5_min_warning: !input sound_5_min_warning
+  sound_10_min_warning: !input sound_10_min_warning
+  sound_15_min_warning: !input sound_15_min_warning
+  sound_dict: >-
+    {
+      "0_min": "{{sound_0_min_warning}}",
+      "1_min": "{{sound_1_min_warning}}", 
+      "5_min": "{{sound_5_min_warning}}",
+      "10_min": "{{sound_10_min_warning}}",
+      "15_min": "{{sound_15_min_warning}}"
+      }
+
 trigger:
   - platform: time_pattern
     seconds: /5
@@ -292,17 +341,23 @@ trigger:
     event: start
     offset: "-0:10:0"
     entity_id: calendar.mitre
-    id: 10min
+    id: 10_min
   - platform: calendar
     event: start
     offset: "-0:5:0"
     entity_id: calendar.mitre
-    id: 5min
+    id: 5_min
   - platform: calendar
     event: start
     offset: "-0:1:0"
     entity_id: calendar.mitre
-    id: 1min
+    id: 1_min
+  - platform: calendar
+    event: start
+    offset: "-0:0:1"
+    entity_id: calendar.mitre
+    id: 0_min
+
 action:
   - service: calendar.list_events
     data:
@@ -533,16 +588,17 @@ action:
             {%- elif data['next_events'][0]['starts_in_10'] -%}
               {'debug': '10 min', 'color':{{color_10_min_warning}}, 'blink': {{blink_10_min_warning}}, 'fade': {{fade_10_min_warning}}}
             {%- else -%}
-              {'debug': 'none', 'color':[0,0,0], 'blink':0}
+              {'debug': 'none', 'color':[0,0,0], 'blink':0, 'fade':0}
             {% endif %}          
           {%- else -%}
-            {'debug': 'none', 'color':[0,0,0], 'blink':0}
+            {'debug': 'none', 'color':[0,0,0], 'blink':0, 'fade':0}
           {%- endif -%}
         {% endmacro -%}
         {{ get_color_blink(event_payload)}}
+
       sound_payload: >-
         {%- if trigger.id != 'temporal' %}
-        chime:d=3,o=5,b=160:a5
+          {{sound_dict[trigger.id]}}
         {%- endif %}
 
   - repeat:
@@ -573,20 +629,25 @@ action:
                 topic: "{{repeat.item}}"
                 payload: >-
                   {{next_events_payload}}
-  - repeat:
-      for_each: "{{sound_topics}}"
-      sequence:
-        - service: mqtt.publish
-          data:
-            qos: 0
-            retain: false
-            topic: "{{repeat.item}}"
-            payload: >-
-              {{sound_payload}}
+  - if:
+      - condition: template
+        value_template: "{{sound_payload != ''}}"
+    then:
+      - repeat:
+          for_each: "{{sound_topics}}"
+          sequence:
+            - service: mqtt.publish
+              data:
+                qos: 0
+                retain: false
+                topic: "{{repeat.item}}"
+                payload: >-
+                  {{sound_payload}}
 
   - service: mqtt.publish
     data:
       qos: 0
       topic: dev-test
       payload: >-
-        {{sound_payload}}
+        {%- set idx = trigger.id %}
+        {{sound_dict[idx]}} {{sound_dict}}
