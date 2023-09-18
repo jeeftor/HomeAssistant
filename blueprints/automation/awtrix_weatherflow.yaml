@@ -693,6 +693,7 @@ variables:
     {%- set ts_rise = rise |as_timestamp %}
     {%- set ts_set = set |as_timestamp %}
     {{ iif(ts_set < ts_rise,'sunset','sunrise') }}
+
   sun_min_until_next_event: >-
     {%- set rise = state_attr('sun.sun','next_rising') %}
     {%- set set = state_attr('sun.sun','next_setting') %}
@@ -828,7 +829,7 @@ variables:
 
     {%- if weather == 'clear-night' and use_moon_clear_night -%}
     {{draw_moon(moon_phase,0,0)}}
-    {%- elif weather == 'sunny' and use_moon_sunny_night -%}
+    {%- elif(sun_next_event == 'sunrise') and use_moon_sunny_night and (weather == 'sunny') -%}
     {{draw_moon(moon_phase,0,0)}}
     {%- else -%}
     {{draw_moon(moon_phase,23,0)}}
