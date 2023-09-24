@@ -910,7 +910,9 @@ variables:
     {# Define the color mapping dictionary #}
     {
     "draw": [
+      {%- if hours_to_show > 0 %}
      {{draw_forecast_lines(8,hours_to_show,0)}}
+     {%- endif %}
      {%- if current_temp != 'unavailable' -%}
      ,{"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}
      {%- else -%}
