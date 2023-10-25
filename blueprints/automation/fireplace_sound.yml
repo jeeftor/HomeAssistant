@@ -10,14 +10,17 @@ blueprint:
       description: Sensor that has the on/off state of the fireplace
       selector:
         entity:
-          domain:
-            - binary_sensor
-            - input_boolean
+          filter:
+            domain:
+              - binary_sensor
+              - input_boolean
     player:
       name: Where to play fireplace sounds
       selector:
         entity:
-          domain: media_player
+          filter:
+            domain:
+              - media_player
     start_vol:
       name: Volume settings
       description: At what volume should the fire sound play
@@ -53,7 +56,14 @@ variables:
   fire_content_substr: "{{ media['media_content_id']  | replace('media-source://media_source/','') }}"
   current_content_id: "{{ state_attr(player,'media_content_id') }}"
   is_on: "{{is_state(fireplace,'on')}}"
-  is_fire_sound: "{{ fire_content_substr in current_content_id }}"
+  is_fire_sound: >
+    {%- if current_content_id %}
+    {{ fire_content_substr in current_content_id }}
+    {{ fire_content_substr in current_content_id }}
+    {%- else %}
+    {{ false }}
+    {%- endif %}
+
   is_playing: "{{is_state(player,'playing')}}"
   action_to_take: >-
     {%- if is_on and not is_playing %}
@@ -62,10 +72,10 @@ variables:
       {%- else %}
       play_music
       {%- endif %}
-    {%- elif not is_on and (is_playing and is_fire_sound) %}
-    stop_music
-    {%- else %}
-    do_nothing
+      {%- elif not is_on and (is_playing and is_fire_sound) %}
+      stop_music
+      {%- else %}
+      do_nothing
     {%- endif %}
 
 trigger:
@@ -79,6 +89,8 @@ trigger:
     from: "playing"
     for:
       seconds: 5
+  # - platform: time_pattern
+  #   seconds: /5
   # - platform: state
   #   # Start playing music... not sure why i need this one?
   #   entity_id: !input player
@@ -89,6 +101,14 @@ trigger:
 condition: []
 
 action:
+  # Debugt stuff
+  # - service: mqtt.publish
+  #   data:
+  #     qos: 0
+  #     retain: false
+  #     topic: "dev"
+  #     payload: >
+
   - choose:
       # - conditions:
       #     - condition: trigger
