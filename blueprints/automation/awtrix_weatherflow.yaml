@@ -656,7 +656,7 @@ variables:
   text_len: >-
     {%- macro get_text_len(string) %}
     {%- set length = namespace(value=0) %}
-    {%- for char in string %}
+    {%- for char in string|string() %}
       {%- if char.isdigit() %}
         {%- set length.value = length.value + 3 %}
       {%- elif char == '°' %}
