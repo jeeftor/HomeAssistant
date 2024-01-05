@@ -956,7 +956,7 @@ action:
                   "pushIcon": 2,
                   "lifetime": 120,
                   "lifetimeMode":1,
-                  "weather": "{{weather}}"
+                  "weather": "{{current_condition}}"
                   }
 
         - service: mqtt.publish

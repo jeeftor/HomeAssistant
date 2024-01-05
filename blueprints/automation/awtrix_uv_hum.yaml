@@ -60,7 +60,7 @@ blueprint:
     forecast:
       name: Hourly UV Forecast
       description: >
-        Select a sensor that provides an Hourly forecast (not a daily one)
+        Select a forecast with `uv_index` available
 
         This integration has been tested with:
 
@@ -72,15 +72,6 @@ blueprint:
           domain:
             - weather
           multiple: false
-    forecast_field:
-      name: UV Index Field
-      description: >
-        Once you've selected your hourly forecast you will need to identify which attributes in the forecast provides a temperature value. 
-
-          - If you are using [Weatherflow](https://github.com/briis/hass-weatherflow) the field will be `uv_index`
-      selector:
-        text:
-      default: "uv_index"
 mode: restart
 variables:
   app_topic: jeef_uv_hum
@@ -97,93 +88,14 @@ variables:
     {%- endfor %}
     {{ ns.devices | reject('match','unavailable') | list}}
 
-  uv: "{{states('sensor.weatherflow_uv_index') | round}}"
+  humidity_sensor: !input hum
+  uv_sensor: !input uv
+
+  humidity: "{{states(humidity_sensor)}}"
+  uv: "{{states(uv_sensor) | round}}"
   forecast_var: !input forecast
-  forecast_field: !input forecast_field
-  forecast: "{{state_attr(forecast_var,'forecast')}}"
+  forecast_field: "uv_index"
   show_forecast: !input show_forecast
-  uv_forecast: >-
-
-    {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
-    #EE82EE
-    {%- elif index | float >= 8 -%}
-    #FF0000
-    {%- elif index | float >= 6 -%}
-    #FF8C00
-    {%- elif index | float >= 3 -%}
-    #FFFF00
-    {%- else -%}
-    #00FF00
-    {%- endif -%}
-    {%- endmacro -%}
-    {%- macro draw_uv_forecast_h(x,y,hours,height) %}
-      {%- for hour in range(hours) %}
-        {%- set uv_index = forecast[hour][forecast_field] |int %}
-        {%- set uv_color = get_uv_color(uv_index) %}
-        {%- if height == 0 %}
-          {"dp": [{{x+hour}},{{y}},"{{uv_color }}"]}
-        {%- else %}
-          {"dl": [{{x+hour}},{{y}},{{x+hour}},{{y - height}},"{{uv_color}}"]}
-        {%- endif %}
-        {%- if hour+1 != hours %},{%endif%}
-      {%- endfor %}
-    {%- endmacro %}
-    {%- if show_forecast %}
-    {{ draw_uv_forecast_h(22,7,8,0) }},
-    {%- endif %}
-  payload: >-
-    {% set hum = states('sensor.weatherflow_relative_humidity') %}
-
-    {%- if uv|float >= 10-%}
-      {%- set uv_offset = "23,1" -%}
-    {%- else %}
-      {%- set uv_offset = "25,1" -%}      
-    {%- endif %} 
-
-    {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
-    #EE82EE
-    {%- elif index | float >= 8 -%}
-    #FF0000
-    {%- elif index | float >= 6 -%}
-    #FF8C00
-    {%- elif index | float >= 3 -%}
-    #FFFF00
-    {%- else -%}
-    #00FF00
-    {%- endif -%}
-    {%- endmacro -%}
-
-    {% set uv_color = get_uv_color(uv) %}
-
-    {% macro draw_uv() %}
-    {"dt":[{{uv_offset}},"{{uv}}","{{uv_color}}"]}
-    {% endmacro %}
-
-    {%- macro draw_u(x,y,color) -%}
-    {"dl":[{{x}},{{y}},{{x}},{{y+2}},"{{color}}"]},
-    {"dl":[{{x}},{{y+2}},{{x+2}},{{y+2}},"{{color}}"]},
-    {"dl":[{{x+2}},{{y}},{{x+2}},{{y+2}},"{{color}}"]}
-    {%- endmacro -%}
-
-    {%- macro draw_v(x,y,color) -%}
-    {"dl":[{{x}},{{y}},{{x+1}},{{y+2}},"{{color}}"]},
-    {"dl":[{{x+2}},{{y}},{{x+1}},{{y+2}},"{{color}}"]}
-    {%- endmacro -%}
-
-
-
-    {
-      "draw": [
-        {"db":[0,1,8,8,[0,0,15657727,0,0,0,0,65536,0,16777215,15132415,12961791,0,0,0,0,16711422,15657982,15198207,12895742,11315711,65536,0,0,15723775,15132415,15066623,11381503,11185150,0,256,0,15592191,12961534,12961535,11315452,8224464,0,0,2,2,11315966,11315965,8158669,0,0,0,0,0,0,0,0,256,0,0,0,0,65793,0,65536,0,2,256,2]]},        
-        {"dt":[6,2,"{{hum}}%"]},
-        {{draw_u(19,1,"#00ffaa")}},
-        {{draw_v(19,5,"#00ffaa")}},
-        {{uv_forecast}}
-        {{draw_uv()}}
-      ],
-      "lifetime": 120,
-      "lifetimeMode":1
-    }
 
 trigger:
   - platform: time_pattern
@@ -191,6 +103,13 @@ trigger:
 
 condition: []
 action:
+  - service: weather.get_forecasts
+    target:
+      entity_id: "{{forecast_var}}"
+    data:
+      type: hourly
+    response_variable: forecast_response
+
   - repeat:
       for_each: "{{ devices_topics }}"
       sequence:
@@ -200,4 +119,82 @@ action:
             retain: false
             topic: "{{ repeat.item }}"
             payload: >
-              {{payload}}
+              {%- set forecast = forecast_response[forecast_var]['forecast'] -%}
+
+              {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
+              #EE82EE
+              {%- elif index | float >= 8 -%}
+              #FF0000
+              {%- elif index | float >= 6 -%}
+              #FF8C00
+              {%- elif index | float >= 3 -%}
+              #FFFF00
+              {%- else -%}
+              #00FF00
+              {%- endif -%}
+              {%- endmacro -%}
+
+              {%- macro draw_uv_forecast_h(x,y,hours,height) %}
+                {%- for hour in range(hours) %}
+                  {%- set uv_index = forecast[hour][forecast_field] |int %}
+                  {%- set uv_color = get_uv_color(uv_index) %}
+                  {%- if height == 0 %}
+                    {"dp": [{{x+hour}},{{y}},"{{uv_color }}"]}
+                  {%- else %}
+                    {"dl": [{{x+hour}},{{y}},{{x+hour}},{{y - height}},"{{uv_color}}"]}
+                  {%- endif %}
+                  {%- if hour+1 != hours %},{%endif%}
+                {%- endfor %}
+              {%- endmacro %}
+
+              {%- macro get_uv_color(index) -%} {%- if index | float > 10 -%}
+              #EE82EE
+              {%- elif index | float >= 8 -%}
+              #FF0000
+              {%- elif index | float >= 6 -%}
+              #FF8C00
+              {%- elif index | float >= 3 -%}
+              #FFFF00
+              {%- else -%}
+              #00FF00
+              {%- endif -%}
+              {%- endmacro -%}
+              {% set uv_color = get_uv_color(uv) %}
+
+
+
+
+              {#- Calculate UV Offset -#}
+              {%- if uv|float >= 10-%}
+                  {%- set uv_offset = "23,1" -%}
+                {%- else %}
+                  {%- set uv_offset = "25,1" -%}
+                {%- endif %}
+
+              {% macro draw_uv() %}
+              {"dt":[{{uv_offset}},"{{uv}}","{{uv_color}}"]}
+              {% endmacro %}
+
+              {%- macro draw_u(x,y,color) -%}
+              {"dl":[{{x}},{{y}},{{x}},{{y+2}},"{{color}}"]},
+              {"dl":[{{x}},{{y+2}},{{x+2}},{{y+2}},"{{color}}"]},
+              {"dl":[{{x+2}},{{y}},{{x+2}},{{y+2}},"{{color}}"]}
+              {%- endmacro -%}
+
+              {%- macro draw_v(x,y,color) -%}
+              {"dl":[{{x}},{{y}},{{x+1}},{{y+2}},"{{color}}"]},
+              {"dl":[{{x+2}},{{y}},{{x+1}},{{y+2}},"{{color}}"]}
+              {%- endmacro -%}
+
+              {
+                "draw": [
+                  {"db":[0,1,8,8,[0,0,15657727,0,0,0,0,65536,0,16777215,15132415,12961791,0,0,0,0,16711422,15657982,15198207,12895742,11315711,65536,0,0,15723775,15132415,15066623,11381503,11185150,0,256,0,15592191,12961534,12961535,11315452,8224464,0,0,2,2,11315966,11315965,8158669,0,0,0,0,0,0,0,0,256,0,0,0,0,65793,0,65536,0,2,256,2]]},
+                  {"dt":[6,2,"{{humidity}}%"]},
+                  {{draw_u(19,1,"#00ffaa")}},
+                  {{draw_v(19,5,"#00ffaa")}},
+                  {%- if show_forecast %}{{ draw_uv_forecast_h(22,7,8,0) }},{%- endif %}
+                  {{draw_uv()}}
+                ],
+                "lifetime": 120,
+                "lifetimeMode":1
+              }
