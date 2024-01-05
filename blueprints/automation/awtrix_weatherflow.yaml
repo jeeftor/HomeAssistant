@@ -1,8 +1,7 @@
 ---
 blueprint:
-  name: AWTRIX Weather ⛈️ + Forecast + 🌕️
+  name: AWTRIX Weather ⛈️ + Forecast + 🌕️ (Service Calls)
   description: >
-
     This is somewhat of a mega-weather blueprint with moon phase support. However for it work correctly you will need a variety of different things setup. It was initially designed to use in partnership with a personal weather station however it seems to work fine with OpenWeather as well or any other provider that offers an hourly forecast.
 
 
@@ -102,6 +101,13 @@ blueprint:
               - weather
           multiple: false
 
+    # use_apparent_temperature:
+    #   name: Use apparent "feels like" temp if available
+    #   description: >
+    #     All forecasts will contain an actual temperature reading. Some will offer a heat-index / wind-chill adjusted value called `apparent_temperature`. If this item is available do you wish to use it?
+    #   selector:
+    #     boolean:
+    #   default: False
     hours_to_show:
       name: Forecast Hours to Show
       description: >
@@ -113,20 +119,6 @@ blueprint:
           unit_of_measurement: "hours"
           mode: box
       default: 12
-
-    forecast_temp_field:
-      name: Temperature Attributes
-      description: >
-        Once you've selected your hourly forecast you will need to identify which attributes in the forecast provides a temperature value. 
-
-          - If you are using [Weatherflow](https://github.com/briis/hass-weatherflow) you may be able to select from either `feels_like` or `temperature`
-
-          - In [Openweather](https://www.home-assistant.io/integrations/openweathermap/) you only have access to `temperature`
-
-      selector:
-        text:
-      default: "feels_like"
-
     temp_digits:
       name: Temp Digits
       description: >
@@ -588,12 +580,11 @@ blueprint:
       selector:
         text:
       default: "w-sunset"
-
 mode: restart
 variables:
   device_ids: !input awtrix
   app_topic: jeef_weather
-  devices_topics: >-
+  topics: >-
     {%- macro get_device_topic(device_id) %}
     {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
     {%- endmacro %}
@@ -605,13 +596,20 @@ variables:
     {%- endfor %}
     {{ ns.devices | reject('match','unavailable') | list}}
 
+  #---------------------------------
+  # Weather Variables
+  #---------------------------------
   forecast_var: !input forecast_var
-  forecast: "{{state_attr(forecast_var,'forecast')}}"
-  weather: "{{states(forecast_var)}}"
+  current_condition: "{{states(forecast_var)}}"
+  current_temp: "{{state_attr(forecast_var,'temperature')}}"
+
+  # Forecast hours to show
   hours_to_show: !input hours_to_show
+
   #---------------------------------
   # Moon Stuff
   #---------------------------------
+
   moon: !input moon
   moon_phase: "{{states(moon)}}"
   moon_times: !input moon_rise_set
@@ -630,6 +628,7 @@ variables:
     {%- else %}
     {{state_attr('sun.sun', 'elevation') < 0 and moon_risen}}
     {%- endif %}
+
   #----------------
   # Temp & Text
   # --------------
@@ -638,19 +637,17 @@ variables:
   current_temp_var: !input current_temp_var
   temp_digits: !input temp_digits
   temp_suffix: !input temp_suffix
-  current_temp: "{{states(current_temp_var)}}"
 
   temp_text: >-
     {%- macro round_and_set_temp(temp_var, temp_suffix, digits=0) -%}
     {%- if has_value(temp_var) -%}
       {{ states(temp_var) | round(digits) ~ temp_suffix}} 
     {%- else -%}
-    ??
+    {{current_temp ~ temp_suffix}}
     {%- endif -%}
     {%- endmacro -%}
     {{ round_and_set_temp(current_temp_var, temp_suffix, temp_digits)}}
 
-  forecast_temp_field: !input forecast_temp_field
   text_available_width: >
     {%- if show_moon %}16{%- else %}24{%- endif %}
   text_len: >-
@@ -677,6 +674,7 @@ variables:
     {{get_text_len(temp_text)}}
   text_x: >-
     {{8 + ((text_available_width - text_len)/2)}}
+
   # ------------------------------
   # SUN THINGS
   # ------------------------------
@@ -736,6 +734,10 @@ variables:
     {}
     {%- endif %}
 
+  # ------------------------------
+  # Icons&Stuff
+  # ------------------------------
+
   icon_clear_night: !input icon_clear_night
   use_moon_clear_night: !input use_moon_clear_night
   use_moon_sunny_night: !input use_moon_sunny_night
@@ -790,14 +792,20 @@ variables:
     'windy': icon_windy, 
     'windy-variant': icon_windy_variant})}}
 
+  #--------------
+  # Weather Icon
+  #--------------
   icon: >
-    {%- if ((weather == 'clear_night') and use_moon_clear_night) %}
+    {%- if ((current_condition == 'clear_night') and use_moon_clear_night) %}
       {{clear_night_dict[moon_phase]}}
-    {%- elif (sun_next_event == 'sunrise') and use_moon_sunny_night and (weather == 'sunny') -%}
+    {%- elif (sun_next_event == 'sunrise') and use_moon_sunny_night and (current_condition == 'sunny') -%}
       
     {%- else %}
-      {{ icon_dict[weather] }}
+      {{ icon_dict[current_condition] }}
     {%- endif %}
+  #-----------
+  # Moon Icon
+  #-----------
 
   moon_data: >
     {%- macro draw_moon(phase,x=22,y=0) %}
@@ -827,109 +835,13 @@ variables:
       {%- endif  %}
     {%- endmacro %}
 
-    {%- if weather == 'clear-night' and use_moon_clear_night -%}
+    {%- if current_condition == 'clear-night' and use_moon_clear_night -%}
     {{draw_moon(moon_phase,0,0)}}
-    {%- elif(sun_next_event == 'sunrise') and use_moon_sunny_night and (weather == 'sunny') -%}
+    {%- elif(sun_next_event == 'sunrise') and use_moon_sunny_night and (current_condition == 'sunny') -%}
     {{draw_moon(moon_phase,0,0)}}
     {%- else -%}
     {{draw_moon(moon_phase,23,0)}}
     {%- endif -%}
-
-  payload: >
-    {%- macro interpolate(dictionary, x) -%}
-      
-      {%- set sorted_keys = dictionary|dictsort -%}
-      {%- set above = sorted_keys|selectattr('0', 'gt', x)|map(attribute='0')|list|first -%}
-      {%- set below = sorted_keys|selectattr('0', 'lt', x)|map(attribute='0')|list|last -%}
-
-      {#- Key matches x exactly -#}
-      {%- if above is defined and dictionary[above] == x -%}
-        {%- set value = dictionary[above] -%}
-        {{ value }}
-      {%- elif below is defined and dictionary[below] == x -%}
-        {%- set value = dictionary[below] -%}
-        {{ value }}
-      {#- Interpolation between two values -#}
-      {%- elif below is defined and above is defined -%}
-        {%- set lower_value = dictionary[below] -%}
-        {%- set upper_value = dictionary[above] -%}
-        {%- set lower_rgb = lower_value[1:] -%}
-        {%- set upper_rgb = upper_value[1:] -%}
-
-        {%- set lower_r = lower_rgb[0:2]|int(base=16) -%}
-        {%- set lower_g = lower_rgb[2:4]|int(base=16) -%}
-        {%- set lower_b = lower_rgb[4:6]|int(base=16) -%}
-
-        {%- set upper_r = upper_rgb[0:2]|int(base=16) -%}
-        {%- set upper_g = upper_rgb[2:4]|int(base=16) -%}
-        {%- set upper_b = upper_rgb[4:6]|int(base=16) -%}
-
-        {%- set interpolation_factor = (x - below) / (above - below) -%}
-        {%- set interpolated_r = ((1 - interpolation_factor) * lower_r + interpolation_factor * upper_r)|int -%}
-        {%- set interpolated_g = ((1 - interpolation_factor) * lower_g + interpolation_factor * upper_g)|int -%}
-        {%- set interpolated_b = ((1 - interpolation_factor) * lower_b + interpolation_factor * upper_b)|int -%}
-
-        {%- set interpolated_hex = '#' ~ '%02X' % interpolated_r ~ '%02X' % interpolated_g ~ '%02X' % interpolated_b -%}
-        {{ interpolated_hex }}
-      {#- Only below key available -#}
-      {%- elif below is defined -%}
-        {%- set value = dictionary[below] -%}
-        {{ value }}
-      {#- Only above key available -#}
-      {%- elif above is defined -%}
-        {%- set value = dictionary[above] -%}
-        {{ value }}
-      {#- No matching keys available -#}
-      {%- else -%}
-        No matching key found.
-      {%- endif -%}
-    {%- endmacro -%}
-
-    {#- Define macro to get length of the forecast}
-    {%- macro str_len(str) %}
-    {%- if '.' in str %}
-    {%- set char_count = (str | length) -1 %}{{char_count * 3 + 1 + char_count}}
-    {%- else %}
-    {%- set char_count = (str | length) %}{{char_count * 3 + (char_count - 1)}}
-    {%- endif %}
-    {%- endmacro %}
-
-    {#- Define a macro to draw out the forecast lines#}
-    {%- macro draw_forecast_lines(x,hours,height) %}
-      {%- for hour in range(hours) %}
-        {%- if height == 0 %}
-          {"dp": [{{x+hour}},7,"{{interpolate(color_dict, forecast[hour][forecast_temp_field]) }}"]}
-        {%- else %}
-          {"dl": [{{x+hour}},7,{{x+hour}},{{7 - height}},"{{interpolate(color_dict, forecast[hour][forecast_temp_field]) }}"]}
-        {%- endif %}
-        {%- if hour+1 != hours %},{%endif%}
-      {%- endfor %}
-    {%- endmacro %}
-
-
-    {# Define the color mapping dictionary #}
-    {
-    "draw": [
-      {%- if hours_to_show > 0 %}
-     {{draw_forecast_lines(8,hours_to_show,0)}}
-     {%- endif %}
-     {%- if current_temp != 'unavailable' -%}
-     ,{"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}
-     {%- else -%}
-     {"dt":"err"}
-     {%- endif -%}
-     
-     {% if show_moon %}
-     ,{{moon_data}}
-     {% endif %}
-    ],
-    "icon": "{{icon}}",
-    "duration": {{message_duration}},
-    "pushIcon": 2,
-    "lifetime": 120,
-    "lifetimeMode":1,
-    "weather": "{{weather}}"
-    }
 
 trigger:
   - platform: time_pattern
@@ -938,20 +850,115 @@ trigger:
     entity_id: !input forecast_var
     id: Changes
     enabled: true
-
 condition: []
-
 action:
+  - service: weather.get_forecasts
+    target:
+      entity_id: "{{forecast_var}}"
+    data:
+      type: hourly
+    response_variable: forecast_response
+
   - repeat:
-      for_each: "{{ devices_topics }}"
+      for_each: "{{ topics }}"
       sequence:
         - service: mqtt.publish
           data:
-            qos: 0
-            retain: false
-            topic: "{{ repeat.item }}"
-            payload: >
-              {{payload}}
+            topic: "{{repeat.item}}"
+            payload: >-
+              {%- set forecast = forecast_response[forecast_var]['forecast'] -%}
+              {%- macro interpolate(dictionary, x) -%}
+              {%- set sorted_keys = dictionary|dictsort -%}
+              {%- set above = sorted_keys|selectattr('0', 'gt', x)|map(attribute='0')|list|first -%}
+              {%- set below = sorted_keys|selectattr('0', 'lt', x)|map(attribute='0')|list|last -%}
+
+              {#- Key matches x exactly -#}
+              {%- if above is defined and dictionary[above] == x -%}
+                {%- set value = dictionary[above] -%}
+                {{ value }}
+              {%- elif below is defined and dictionary[below] == x -%}
+                {%- set value = dictionary[below] -%}
+                {{ value }}
+              {#- Interpolation between two values -#}
+              {%- elif below is defined and above is defined -%}
+                {%- set lower_value = dictionary[below] -%}
+                {%- set upper_value = dictionary[above] -%}
+                {%- set lower_rgb = lower_value[1:] -%}
+                {%- set upper_rgb = upper_value[1:] -%}
+
+                {%- set lower_r = lower_rgb[0:2]|int(base=16) -%}
+                {%- set lower_g = lower_rgb[2:4]|int(base=16) -%}
+                {%- set lower_b = lower_rgb[4:6]|int(base=16) -%}
+
+                {%- set upper_r = upper_rgb[0:2]|int(base=16) -%}
+                {%- set upper_g = upper_rgb[2:4]|int(base=16) -%}
+                {%- set upper_b = upper_rgb[4:6]|int(base=16) -%}
+
+                {%- set interpolation_factor = (x - below) / (above - below) -%}
+                {%- set interpolated_r = ((1 - interpolation_factor) * lower_r + interpolation_factor * upper_r)|int -%}
+                {%- set interpolated_g = ((1 - interpolation_factor) * lower_g + interpolation_factor * upper_g)|int -%}
+                {%- set interpolated_b = ((1 - interpolation_factor) * lower_b + interpolation_factor * upper_b)|int -%}
+
+                {%- set interpolated_hex = '#' ~ '%02X' % interpolated_r ~ '%02X' % interpolated_g ~ '%02X' % interpolated_b -%}
+                {{ interpolated_hex }}
+              {#- Only below key available -#}
+              {%- elif below is defined -%}
+                {%- set value = dictionary[below] -%}
+                {{ value }}
+              {#- Only above key available -#}
+              {%- elif above is defined -%}
+                {%- set value = dictionary[above] -%}
+                {{ value }}
+              {#- No matching keys available -#}
+              {%- else -%}
+                No matching key found.
+              {%- endif -%}
+              {%- endmacro -%}
+
+              {#- Define macro to get length of the forecast -#}
+              {%- macro str_len(stringo) %}
+              {%- if '.' in stringo %}
+              {%- set char_count = (stringo | length) -1 %}{{char_count * 3 + 1 + char_count}}
+              {%- else %}
+              {%- set char_count = (stringo | length) %}{{char_count * 3 + (char_count - 1)}}
+              {%- endif %}
+              {%- endmacro %}
+
+              {#- Define a macro to draw out the forecast lines#}
+                {%- macro draw_forecast_lines(x,hours,height) %}
+                  {%- for hour in range(hours) %}
+                    {%- if height == 0 %}
+                      {"dp": [{{x+hour}},7,"{{interpolate(color_dict, forecast[hour]['temperature']) }}"]}
+                    {%- else %}
+                      {"dl": [{{x+hour}},7,{{x+hour}},{{7 - height}},"{{interpolate(color_dict, forecast[hour]['temperature']) }}"]}
+                    {%- endif %}
+                    {%- if hour+1 != hours %},{%endif%}
+                  {%- endfor %}
+                {%- endmacro %}
+
+                {
+                  "draw": [
+                    {%- if hours_to_show > 0 %}
+                    {{draw_forecast_lines(8,hours_to_show,0)}}
+                  {%- endif %}
+                  {%- if current_temp != 'unavailable' -%}
+                  ,{"dt":[{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]}
+                  {%- else -%}
+                  {"dt":"err"}
+                  {%- endif -%}
+
+                  {% if show_moon %}
+                  ,{{moon_data}}
+                  {% endif %}
+                  ],
+                  "icon": "{{icon}}",
+                  "duration": {{message_duration}},
+                  "pushIcon": 2,
+                  "lifetime": 120,
+                  "lifetimeMode":1,
+                  "weather": "{{weather}}"
+                  }
+
         - service: mqtt.publish
           data:
             qos: 0
