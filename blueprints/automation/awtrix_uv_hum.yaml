@@ -99,7 +99,7 @@ variables:
 
 trigger:
   - platform: time_pattern
-    seconds: /5
+    minutes: /5
 
 condition: []
 action:
