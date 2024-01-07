@@ -72,6 +72,7 @@ blueprint:
           domain:
             - weather
           multiple: false
+
 mode: restart
 variables:
   app_topic: jeef_uv_hum
@@ -91,7 +92,7 @@ variables:
   humidity_sensor: !input hum
   uv_sensor: !input uv
 
-  humidity: "{{states(humidity_sensor)}}"
+  humidity: "{{states(humidity_sensor) | round}}"
   uv: "{{states(uv_sensor) | round}}"
   forecast_var: !input forecast
   forecast_field: "uv_index"
@@ -99,7 +100,7 @@ variables:
 
 trigger:
   - platform: time_pattern
-    minutes: /5
+    minutes: "/5"
 
 condition: []
 action:
@@ -195,6 +196,6 @@ action:
                   {%- if show_forecast %}{{ draw_uv_forecast_h(22,7,8,0) }},{%- endif %}
                   {{draw_uv()}}
                 ],
-                "lifetime": 120,
+                "lifetime": 620,
                 "lifetimeMode":1
               }
