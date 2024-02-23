@@ -167,9 +167,9 @@ action:
 
               {#- Calculate UV Offset -#}
               {%- if uv|float >= 10-%}
-                  {%- set uv_offset = "23,1" -%}
+                  {%- set uv_offset = "23,2" -%}
                 {%- else %}
-                  {%- set uv_offset = "25,1" -%}
+                  {%- set uv_offset = "25,2" -%}
                 {%- endif %}
 
               {% macro draw_uv() %}
@@ -183,8 +183,8 @@ action:
               {%- endmacro -%}
 
               {%- macro draw_v(x,y,color) -%}
-              {"dl":[{{x}},{{y}},{{x+1}},{{y+2}},"{{color}}"]},
-              {"dl":[{{x+2}},{{y}},{{x+1}},{{y+2}},"{{color}}"]}
+              {"dl":[{{x+1}},{{y+2}},{{x}},{{y}},"{{color}}"]},
+              {"dl":[{{x+1}},{{y+2}},{{x+2}},{{y}},"{{color}}"]}
               {%- endmacro -%}
 
               {
