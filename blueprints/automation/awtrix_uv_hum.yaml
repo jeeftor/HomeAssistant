@@ -166,10 +166,19 @@ action:
 
 
               {#- Calculate UV Offset -#}
+              
               {%- if uv|float >= 10-%}
-                  {%- set uv_offset = "23,2" -%}
+                  {%- if show_forecast %}
+                    {%- set uv_offset = "23,1" -%}
+                  {%- else %}
+                    {%- set uv_offset = "23,2" -%}
+                  {%- endif %}
                 {%- else %}
-                  {%- set uv_offset = "25,2" -%}
+                  {%- if show_forecast %}
+                    {%- set uv_offset = "25,1" -%}
+                  {%- else %}
+                    {%- set uv_offset = "25,2" -%}
+                  {%- endif %}
                 {%- endif %}
 
               {% macro draw_uv() %}
