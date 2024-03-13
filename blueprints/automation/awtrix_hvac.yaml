@@ -25,7 +25,7 @@ blueprint:
         device:
           integration: mqtt
           manufacturer: Blueforcer
-          model: AWTRIX Light
+          model: AWTRIX 3
           multiple: true
     hvac:
       name: Climate Device / HVAC
