@@ -803,6 +803,30 @@ variables:
     {%- else %}
       {{ icon_dict[current_condition] }}
     {%- endif %}
+
+  #--------------
+  # Weather Overlay
+  #--------------
+  overlay_dict: >-
+    {{ dict({'clear-night': 'clear',
+    'cloudy': 'clear',
+    'exceptional': 'clear',
+    'fog': 'clear',
+    'hail': 'frost',
+    'lightning': 'thunder',
+    'lightning-rainy': 'thunder',
+    'partlycloudy': 'clear',
+    'pouring': 'storm',
+    'rainy': 'drizzle',
+    'snowy': 'snow',
+    'snowy-rainy': 'snow',
+    'sunny': 'clear',
+    'windy': 'clear', 
+    'windy-variant': 'clear'})}}
+
+  overlay: >
+    {{ overlay_dict[current_condition] }}
+
   #-----------
   # Moon Icon
   #-----------
@@ -845,7 +869,7 @@ variables:
 
 trigger:
   - platform: time_pattern
-    seconds: /5
+    minutes: /1  
   - platform: state
     entity_id: !input forecast_var
     id: Changes
@@ -956,7 +980,8 @@ action:
                   "pushIcon": 2,
                   "lifetime": 120,
                   "lifetimeMode":1,
-                  "weather": "{{current_condition}}"
+                  "weather": "{{current_condition}}",
+                  "overlay": "{{overlay}}"
                   }
 
         - service: mqtt.publish
