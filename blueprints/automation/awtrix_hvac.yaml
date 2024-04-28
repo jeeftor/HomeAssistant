@@ -68,12 +68,12 @@ variables:
 
   climate: !input hvac
   mode: "{{states(climate)}}"
-  target_temp: "{{ iif(state_attr('climate.downstairs', 'temperature'),state_attr('climate.downstairs', 'temperature'),0,state_attr('climate.downstairs', 'current_temperature')) | round(0)}}"
+  target_temp: "{{ iif(state_attr(climate, 'temperature'),state_attr(climate, 'temperature'),0,state_attr(climate, 'current_temperature')) | round(0)}}"
   temp_current: "{{state_attr(climate, 'current_temperature')}}"
   temp_current_ceil: "{{ temp_current | round(0,'ceil') }}"
   temp_current_floor: "{{ temp_current | round(0,'floor') }}"
 
-  is_running: "{{ not state_attr('climate.downstairs', 'temperature') is none }}"
+  is_running: "{{ not state_attr(climate, 'temperature') is none }}"
 
   payload: >-
     {%- if not is_running %}
