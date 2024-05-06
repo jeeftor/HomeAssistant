@@ -75,13 +75,15 @@ blueprint:
   domain: automation
   input:
     awtrix:
-      name: AWTRIX Device
-      description: Select the Awtrix light
+      name: AWTRIX Device Room
+      description: Select the Awtrix device(s)
       selector:
-        device:
-          integration: mqtt
-          manufacturer: Blueforcer
-          model: AWTRIX 3
+        select:
+          options:
+            - label: "buro"
+              value: "buro"
+            - label: "sejour"
+              value: "sejour"
           multiple: true
 
     forecast_var:
@@ -582,19 +584,7 @@ blueprint:
       default: "w-sunset"
 mode: restart
 variables:
-  device_ids: !input awtrix
-  app_topic: jeef_weather
-  topics: >-
-    {%- macro get_device_topic(device_id) %}
-    {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
-    {%- endmacro %}
-
-    {%- set ns = namespace(devices=[]) %}
-    {%- for device_id in device_ids %}
-      {%- set device=get_device_topic(device_id)|replace(' ','') %}
-      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_topic] %}
-    {%- endfor %}
-    {{ ns.devices | reject('match','unavailable') | list}}
+  device_rooms: !input awtrix
 
   #---------------------------------
   # Weather Variables
@@ -860,11 +850,12 @@ action:
     response_variable: forecast_response
 
   - repeat:
-      for_each: "{{ topics }}"
+      for_each: "{{ device_rooms }}"
       sequence:
-        - service: mqtt.publish
+        - service: rest_command.awtrix_app_with_payload
           data:
-            topic: "{{repeat.item}}"
+            room: {{ repeat.item }}
+            name: weather
             payload: >-
               {%- set forecast = forecast_response[forecast_var]['forecast'] -%}
               {%- macro interpolate(dictionary, x) -%}
@@ -959,10 +950,9 @@ action:
                   "weather": "{{current_condition}}"
                   }
 
-        - service: mqtt.publish
+        - service: rest_command.awtrix_app_with_payload
           data:
-            qos: 0
-            retain: false
-            topic: "{{ repeat.item ~ '_sun'}} "
+            room: {{ repeat.item }}
+            name: sun
             payload: >
               {{sun_payload}}
