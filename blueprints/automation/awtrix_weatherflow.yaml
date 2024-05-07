@@ -585,7 +585,9 @@ blueprint:
       default: "w-sunset"
 mode: restart
 variables:
-  device_rooms: !input awtrix
+  input_device_rooms: !input awtrix
+  topics: >-
+    {{ input_device_rooms | list}}
 
   #---------------------------------
   # Weather Variables
