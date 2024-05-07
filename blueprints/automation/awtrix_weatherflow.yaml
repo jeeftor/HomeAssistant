@@ -85,7 +85,7 @@ blueprint:
             - label: "sejour"
               value: "sejour"
           multiple: true
-      default: []
+      default: ["buro"]
 
     forecast_var:
       name: Hourly Forecast
@@ -586,7 +586,7 @@ blueprint:
 mode: restart
 variables:
   input_device_rooms: !input awtrix
-  topics: >-
+  device_rooms: >-
     {{ input_device_rooms | list}}
 
   #---------------------------------
@@ -857,7 +857,7 @@ action:
       sequence:
         - service: rest_command.awtrix_app_with_payload
           data:
-            room: buro #{{ repeat.item }}
+            room: {{ repeat.item }}
             name: weather
             payload: >-
               {%- set forecast = forecast_response[forecast_var]['forecast'] -%}
@@ -955,7 +955,7 @@ action:
 
         - service: rest_command.awtrix_app_with_payload
           data:
-            room: buro #{{ repeat.item }}
+            room: {{ repeat.item }}
             name: sun
             payload: >
               {{sun_payload}}
