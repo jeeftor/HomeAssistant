@@ -85,6 +85,7 @@ blueprint:
             - label: "sejour"
               value: "sejour"
           multiple: true
+      default: []
 
     forecast_var:
       name: Hourly Forecast
