@@ -236,7 +236,7 @@ blueprint:
           filter:
             integration: moon
     moon_rise_set:
-      name: Moon Riese/Set Sensor
+      name: Moon Rise/Set Sensor
       description: >
         As Home Assistant doesn't provide moon rise/set times you will need to get this from some api. In my personal setup I use [ipgeolocation](https://app.ipgeolocation.io) as my api.
 
@@ -839,8 +839,21 @@ variables:
 trigger:
   - platform: time_pattern
     seconds: /5
+    enabled: false
   - platform: state
     entity_id: !input forecast_var
+    id: Changes
+    enabled: true
+  - platform: state
+    entity_id: !input current_temp_var
+    id: Changes
+    enabled: true
+  - platform: state
+    entity_id: !input moon
+    id: Changes
+    enabled: true
+  - platform: state
+    entity_id: !input moon_rise_set
     id: Changes
     enabled: true
 condition: []
