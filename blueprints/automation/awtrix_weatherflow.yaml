@@ -79,9 +79,10 @@ blueprint:
       description: Select the Awtrix light
       selector:
         device:
-          integration: mqtt
-          manufacturer: Blueforcer
-          model: AWTRIX 3
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
           multiple: true
 
     forecast_var:
@@ -170,8 +171,9 @@ blueprint:
 
       selector:
         entity:
-          domain:
-            - sensor
+          filter:
+            domain:
+              - sensor
           multiple: false
       default: sensor.weatherflow_air_temperature
 
@@ -844,15 +846,15 @@ variables:
     {%- endif -%}
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     seconds: /5
-  - platform: state
+  - trigger: state
     entity_id: !input forecast_var
     id: Changes
     enabled: true
 condition: []
 action:
-  - service: weather.get_forecasts
+  - action: weather.get_forecasts
     target:
       entity_id: "{{forecast_var}}"
     data:
@@ -862,7 +864,7 @@ action:
   - repeat:
       for_each: "{{ topics }}"
       sequence:
-        - service: mqtt.publish
+        - action: mqtt.publish
           data:
             topic: "{{repeat.item}}"
             payload: >-
@@ -959,7 +961,7 @@ action:
                   "weather": "{{current_condition}}"
                   }
 
-        - service: mqtt.publish
+        - action: mqtt.publish
           data:
             qos: 0
             retain: false

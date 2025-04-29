@@ -1,0 +1,143 @@
+blueprint:
+  name: A State Monitor with Actionable Notifications
+  description: >
+    Send notifications to a mobile app at regular intervals when a device reaches a specified state.
+    Includes actionable notifications to close covers if the entity is a cover.
+    Messages will arrive in the form of "[ENTITY NAME] is [Condition Name] for X hrs".
+  domain: automation
+  input:
+    monitored_entity:
+      name: Monitored Entity
+      description: The entity to monitor for state changes
+      selector:
+        entity:
+    target_state:
+      name: Target State
+      description: >
+        Leave this blank to use the default. The default states are as follows:
+          - `cover`: **`open`**
+          - `binary_sensor`: **`on`**
+      selector:
+        text:
+      default: ""
+    message_state:
+      name: Condition Name
+      description: The text to include in notifications (e.g., "Open" or "Still Open")
+      selector:
+        text:
+      default: "Open"
+    notify_device:
+      name: Notification Device
+      description: The mobile app device to send notifications to
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+    interval_minutes:
+      name: Notification Interval (Minutes)
+      description: How often to send notifications while in target state
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 180
+          unit_of_measurement: minutes
+
+variables:
+  interval_minutes: !input interval_minutes
+  monitored_entity: !input monitored_entity
+  notify_device: !input notify_device
+  message_state: !input message_state
+  entity_name: "{{ state_attr(monitored_entity, 'friendly_name') or monitored_entity.split('.')[1] | replace('_', ' ') | title }}"
+  # Derive notify_service from device ID
+  notify_service: >-
+    {% set devices = device_entities(notify_device) | list %}
+    notify.mobile_app_{{devices[0].split('.')[1]}}
+  unique_tag: "{{ monitored_entity | replace('.', '_') }}_state_monitor"
+  default_state: >-
+    {% if monitored_entity.split('.')[0] == 'cover' %}
+      open
+    {% elif monitored_entity.split('.')[0] == 'binary_sensor' %}
+      on
+    {% else %}
+      on
+    {% endif %}
+  ts: !input target_state
+  target_state: >-
+    {% if not ts or ts == '' %}
+      {{ default_state | trim }}
+    {% else %}
+      {{ ts | trim }}
+    {% endif %}
+  is_cover: >-
+    {% if monitored_entity.split('.')[0] == 'cover' %}
+      true
+    {% else %}
+      false
+    {% endif %}
+  actions: >-
+    {% if is_cover == 'true' %}
+      [{"action": "CLOSE_{{ unique_tag }}", 
+        "title": "Close {{ entity_name }}", 
+        "service": "cover.close_cover",
+        "service_data": {"entity_id": "{{ monitored_entity }}"}}]
+    {% else %}
+      []
+    {% endif %}
+
+trigger:
+  - trigger: state
+    entity_id: !input monitored_entity
+  - trigger: homeassistant
+    event: start
+  - trigger: event
+    event_type: automation_reloaded
+
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input monitored_entity
+            state: "{{ target_state }}"
+        sequence:
+          - variables:
+              message: "{{ entity_name }} is now {{ message_state }}"
+          - action: "{{ notify_service }}"
+            data:
+              title: "{{ entity_name }}"
+              message: "{{ message }}"
+              data:
+                tag: "{{ unique_tag }}"
+                actions: "{{ actions }}"
+          - repeat:
+              while:
+                - condition: state
+                  entity_id: !input monitored_entity
+                  state: "{{ target_state }}"
+              sequence:
+                - delay:
+                    minutes: "{{ interval_minutes }}"
+                - variables:
+                    last_changed_str: >-
+                      {{ relative_time(states[monitored_entity].last_changed | default(0))
+                      | replace('hours', 'hr')
+                      | replace('hour', 'hr')
+                      | replace('seconds', 'sec')
+                      | replace('minutes', 'min')
+                      | replace('minute', 'min') }}
+                    message: "{{ entity_name }} is {{ message_state }} for {{ last_changed_str }}"
+                - action: "{{ notify_service }}"
+                  data:
+                    title: "{{ entity_name }}"
+                    message: "{{ message }}"
+                    data:
+                      tag: "{{ unique_tag }}"
+                      actions: "{{ actions }}"
+    default:
+      - action: "{{ notify_service }}"
+        data:
+          message: "clear_notification"
+          data:
+            tag: "{{ unique_tag }}"
+
+mode: restart

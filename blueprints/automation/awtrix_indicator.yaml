@@ -358,32 +358,32 @@ variables:
       }
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     seconds: /5
     id: temporal
-  - platform: calendar
+  - trigger: calendar
     event: start
     offset: "-0:10:0"
     entity_id: calendar.mitre
     id: 10_min
-  - platform: calendar
+  - trigger: calendar
     event: start
     offset: "-0:5:0"
     entity_id: calendar.mitre
     id: 5_min
-  - platform: calendar
+  - trigger: calendar
     event: start
     offset: "-0:1:0"
     entity_id: calendar.mitre
     id: 1_min
-  - platform: calendar
+  - trigger: calendar
     event: start
     offset: "-0:0:1"
     entity_id: calendar.mitre
     id: 0_min
 
 action:
-  - service: calendar.get_events
+  - action: calendar.get_events
     data:
       duration:
         hours: 8
@@ -499,7 +499,7 @@ action:
           {%- set starts_in_10 = iif((0 < start_min) and (start_min <= 10),1,0) -%}
           {
              "summary": "{{event.summary}}"
-             ,"location":{{ ((event.location | replace('\n', ' ')) | to_json)}} 
+             ,"location":{{ ((event.location | default('') | replace('\n', ' ')) | to_json)}} 
              ,"start_ts":{{start_ts}}
              ,"end_ts":{{end_ts}}
              ,"rel_start":"{{rel_start}}"
@@ -525,7 +525,7 @@ action:
       locations: >-
         {%- set ns = namespace(locations=[]) %}        
         {%- for event in cal_events[calendar].events %}
-          {% set loc = {"locations": ((event.location | replace('\n', ' ')) | to_json) } %}
+          {% set loc = {"locations": ((event.location | default('') | replace('\n', ' ')) | to_json) } %}
           {%- set ns.locations = ns.locations + [loc] + [loc] %}
         {%- endfor -%}
         {{ns.locations}}
@@ -630,7 +630,7 @@ action:
   - repeat:
       for_each: "{{devices_topics}}"
       sequence:
-        - service: mqtt.publish
+        - action: mqtt.publish
           data:
             qos: 0
             retain: false
@@ -648,7 +648,7 @@ action:
       - repeat:
           for_each: "{{next_meeting_topics}}"
           sequence:
-            - service: mqtt.publish
+            - action: mqtt.publish
               data:
                 qos: 0
                 retain: false
@@ -662,7 +662,7 @@ action:
       - repeat:
           for_each: "{{sound_topics}}"
           sequence:
-            - service: mqtt.publish
+            - action: mqtt.publish
               data:
                 qos: 0
                 retain: false
@@ -674,7 +674,7 @@ action:
       - condition: template
         value_template: "{{trigger.id != 'temporal'}}"
     then:
-      - service: mqtt.publish
+      - action: mqtt.publish
         data:
           qos: 0
           topic: dev-test
