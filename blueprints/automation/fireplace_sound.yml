@@ -45,9 +45,13 @@ blueprint:
       description: Due to limitations in HA you will also have to re-select the media player above
       selector:
         media:
-mode: restart
+mode: queued
+
 variables:
-  fireplace: !input fireplace_sensor
+  fireplace_sensor: !input fireplace_sensor
+  fireplace_state: "{{states(fireplace_sensor)}}"
+  is_fireplace_on: "{{is_state(fireplace_sensor,'on')}}"
+
   media: !input media
   player: !input player
   start_vol: !input start_vol
@@ -55,42 +59,58 @@ variables:
   fire_content_id: "{{ media['media_content_id']  }}"
   fire_content_substr: "{{ media['media_content_id']  | replace('media-source://media_source/','') }}"
   current_content_id: "{{ state_attr(player,'media_content_id') }}"
-  is_on: "{{is_state(fireplace,'on')}}"
   is_fire_sound: >
     {%- if current_content_id %}
-    {{ fire_content_substr in current_content_id }}
     {{ fire_content_substr in current_content_id }}
     {%- else %}
     {{ false }}
     {%- endif %}
 
   is_playing: "{{is_state(player,'playing')}}"
+  is_playing_fire_sound: "{{ is_playing and is_fire_sound}}"
   action_to_take: >-
-    {%- if is_on and not is_playing %}
+    {%- if is_fireplace_on and not is_playing %}
       {%- if trigger.id == 'stopped' and is_fire_sound %}
       do_nothing
       {%- else %}
       play_music
       {%- endif %}
-      {%- elif not is_on and (is_playing and is_fire_sound) %}
+      {#- If fireplace is off and we were playing the fire music -#}
+      {%- elif not is_fireplace_on and (is_playing and is_fire_sound) %}
       stop_music
       {%- else %}
       do_nothing
     {%- endif %}
 
+  last_state: >
+    {{ trigger }}
+  bool1: "{{ 'from_state' in trigger }}"
+  bool2: "{{ 'entity_id' in trigger }}"
+  bool3: "{{ 'id' in trigger }}"
+  bool4: "{{ 'to_state' in trigger }}"
+
+  dev: >
+    {%- if 'from_state' in trigger -%}
+      From: {{trigger.from_state}}  
+    {%- endif -%}
+    {%- if 'to_state' in trigger -%}
+      To: {{trigger.to_state}}  
+    {%- endif -%}
 trigger:
-  - platform: state
+  - trigger: state
     entity_id: !input fireplace_sensor
-    id: fireplace
-  - platform: state
+    id: fireplace_state
+  - trigger: state
     # Stop playing Music
     entity_id: !input player
-    id: stopped
+    id: music_stop
     from: "playing"
     for:
-      seconds: 5
+      seconds: 1
   # - platform: time_pattern
+  #   id: time_pattern
   #   seconds: /5
+  # minutes: /5
   # - platform: state
   #   # Start playing music... not sure why i need this one?
   #   entity_id: !input player
@@ -101,13 +121,25 @@ trigger:
 condition: []
 
 action:
-  # Debugt stuff
-  # - service: mqtt.publish
-  #   data:
-  #     qos: 0
-  #     retain: false
-  #     topic: "dev"
-  #     payload: >
+  # Debug stuff
+  - action: mqtt.publish
+    data:
+      qos: 0
+      retain: false
+      topic: "dev"
+      payload: >
+        bool1: {{bool1}}
+        bool2: {{bool2}}
+        bool3: {{bool3}}
+        bool4: {{bool4}}
+
+  - action: mqtt.publish
+    data:
+      qos: 0
+      retain: false
+      topic: "dev"
+      payload: "{{dev}}"
+      # payload: "{{trigger | to_json}}"
 
   - choose:
       # - conditions:
@@ -120,24 +152,24 @@ action:
             value_template: "{{action_to_take == 'play_music'}}"
         sequence:
           # Unjoin the groups
-          - service: media_player.unjoin
+          - action: media_player.unjoin
             target:
               entity_id: "{{player}}"
           # set volume
-          - service: media_player.volume_set
+          - action: media_player.volume_set
             data:
               volume_level: "{{start_vol}}"
             target:
               entity_id: "{{player}}"
           # play
-          - service: media_player.play_media
+          - action: media_player.play_media
             data:
               media_content_id: "{{fire_content_id}}"
               media_content_type: music
             target:
               entity_id: "{{player}}"
           # Repeat ON
-          - service: media_player.repeat_set
+          - action: media_player.repeat_set
             data:
               repeat: one
             target:
@@ -149,10 +181,10 @@ action:
             value_template: "{{action_to_take == 'stop_music'}}"
         sequence:
           # Pause/Stop the current "stuff" the current
-          - service: media_player.media_stop
+          - action: media_player.media_stop
             target:
               entity_id: "{{player}}"
-          - service: media_player.volume_set
+          - action: media_player.volume_set
             data:
               volume_level: "{{end_vol}}"
             target:
