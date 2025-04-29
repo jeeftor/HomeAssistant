@@ -22,9 +22,10 @@ blueprint:
       description: Select the Awtrix light
       selector:
         device:
-          integration: mqtt
-          manufacturer: Blueforcer
-          model: AWTRIX 3
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
           multiple: true
     hum:
       name: Humidity Sensor
@@ -69,8 +70,9 @@ blueprint:
           - NOTE: [Openweather](https://www.home-assistant.io/integrations/openweathermap/) DOES NOT HAVE AN HOURLY UV FORECAST
       selector:
         entity:
-          domain:
-            - weather
+          filter:
+            domain:
+              - weather
           multiple: false
 
 mode: restart
@@ -99,12 +101,12 @@ variables:
   show_forecast: !input show_forecast
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     minutes: "/5"
 
 condition: []
 action:
-  - service: weather.get_forecasts
+  - action: weather.get_forecasts
     target:
       entity_id: "{{forecast_var}}"
     data:
@@ -114,7 +116,7 @@ action:
   - repeat:
       for_each: "{{ devices_topics }}"
       sequence:
-        - service: mqtt.publish
+        - action: mqtt.publish
           data:
             qos: 0
             retain: false

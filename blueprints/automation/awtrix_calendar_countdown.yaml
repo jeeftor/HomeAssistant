@@ -43,12 +43,21 @@ variables:
     {{ ns.devices | reject('match','unavailable') | list}}
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     seconds: /1
     id: temporal
 
 action:
-  - service: calendar.list_events
+  - action: calendar.get_events
+    target: "{{ calendar }}"
+    data:
+      duration:
+        hours: 8
+        minutes: 0
+        secons: 0
+    response_variable: v2_events
+
+  - action: calendar.list_events
     data:
       duration:
         hours: 8
@@ -231,7 +240,7 @@ action:
 
         {"stack":false, "text":"{{time_remaining}}", "progress":"{{progress}}" }
 
-  - service: mqtt.publish
+  - action: mqtt.publish
     data:
       qos: 0
       topic: awtrix_1/notify

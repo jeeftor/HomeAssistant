@@ -23,16 +23,18 @@ blueprint:
       description: Select the Awtrix light
       selector:
         device:
-          integration: mqtt
-          manufacturer: Blueforcer
-          model: AWTRIX 3
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
           multiple: true
     hvac:
       name: Climate Device / HVAC
       description: HVAC Device (Ecobee, Nest etc)
       selector:
         entity:
-          domain: climate
+          filter:
+            domain: climate
     heat_icon:
       name: Heating icon name
       selector:
@@ -74,28 +76,32 @@ variables:
   temp_current_floor: "{{ temp_current | round(0,'floor') }}"
 
   is_running: "{{ not state_attr('climate.downstairs', 'temperature') is none }}"
+  is_ac_on: "{{ mode == 'cool' and (target_temp < temp_current) }}"
+  is_heat_on: "{{ mode == 'heat' and (target_temp > temp_current) }}"
 
   payload: >-
     {%- if not is_running %}
     {}
-    {%- elif mode == 'heat' %}
+    {%- elif mode == 'heat' and is_heat_on%}
     { "icon": "heat",
       "text": [
         {"t":"{{temp_current_floor}}", "c":"#ffffff"},
         {"t":">","c":"#9c9d97"},
         {"t":"{{target_temp}}", "c":"#ffffff"}
       ] }
-    {% elif mode == 'cool' %}
+    {% elif mode == 'cool' and is_ac_on %}
     { "icon": "cool",
       "text": [
         {"t":"{{temp_current_ceil}}", "c":"#ffffff"},
         {"t":">","c":"#9c9d97"},
         {"t":"{{target_temp}}", "c":"#ffffff"}
       ] }
+    {% else %}
+    {}
     {% endif %}
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     seconds: /5
 
 condition: []
@@ -103,7 +109,7 @@ action:
   - repeat:
       for_each: "{{ devices_topics }}"
       sequence:
-        - service: mqtt.publish
+        - action: mqtt.publish
           data:
             qos: 0
             retain: false

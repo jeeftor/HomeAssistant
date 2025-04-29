@@ -24,9 +24,10 @@ blueprint:
       description: Select the Awtrix light
       selector:
         device:
-          integration: mqtt
-          manufacturer: Blueforcer
-          model: AWTRIX 3
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
           multiple: true
     app_name:
       name: Awtrix Applicaiton name
@@ -39,10 +40,11 @@ blueprint:
       description: Binary sensor to track door status
       selector:
         entity:
-          domain:
-            - binary_sensor
-            - input_boolean
-            - cover
+          filter:
+            domain:
+              - binary_sensor
+              - input_boolean
+              - cover
     open_text:
       name: 📝 Device Opened Message
       description: Text to be displayed when an open event occurs
@@ -176,6 +178,18 @@ blueprint:
         `garage_open.gif`,`garage_is_open.gif` `garage_close.gif` `garage_error.gif`
 
 
+        ### Blinds
+
+        (Images are blurry because they are resized)
+
+        <img src="https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_blinds/blinds_open.gif" width="16">
+        <img src="https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_blinds/blinds_is_open.gif" width="16">
+        <img src="https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_blinds/blinds_close.gif" width="16">
+        <img src="https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_blinds/blinds_error.gif" width="16">
+
+        `blinds_open.gif`,`blinds_is_open.gif` `blinds_close.gif` `blinds_error.gif`
+
+
         # CUSTOM ICONS BELOW
 
         The icon settings below only will take effect if you've selected custom
@@ -192,6 +206,8 @@ blueprint:
               value: garage
             - label: Window
               value: window
+            - label: Blinds
+              value: blinds
             - label: Use Custom icons
               value: custom
 
@@ -352,17 +368,17 @@ trigger_variables:
   trigger_sensor: !input trigger_sensor
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     minutes: /1
     id: time
-  - platform: template
+  - trigger: template
     id: opened
     value_template: "{{ states(trigger_sensor) in ['on', 'open'] }}"
-  - platform: template
+  - trigger: template
     value_template: "{{ states(trigger_sensor) in ['closed','off'] }}"
     id: closed
-  - platform: template
-    value_template: "{{ states(trigger_sensor) not in ['off','on', 'open','closed'] }}"
+  - trigger: template
+    value_template: "{{ states(trigger_sensor) not in ['off','on', 'open','closed', 'closing', 'opening'] }}"
     id: error
 
 condition: []
@@ -382,12 +398,29 @@ action:
           - repeat:
               for_each: "{{ message_topics }}"
               sequence:
-                - service: mqtt.publish
+                - action: mqtt.publish
                   data:
                     qos: 0
                     retain: false
                     topic: "{{ repeat.item }}"
                     payload: "{{is_open_payload}}"
+      # Fix an issue with a lingering close state after reboot
+      - conditions:
+          - and:
+              - condition: trigger
+                id: time
+              - condition: template
+                value_template: "{{ states(trigger_sensor) in ['off', 'closed'] }}"
+        sequence:
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{}"
 
       # Door open logic (Notification + message)
       - conditions:
@@ -397,7 +430,7 @@ action:
           - repeat:
               for_each: "{{ notification_topics }}"
               sequence:
-                - service: mqtt.publish
+                - action: mqtt.publish
                   data:
                     qos: 0
                     retain: false
@@ -412,7 +445,7 @@ action:
           - repeat:
               for_each: "{{ notification_topics }}"
               sequence:
-                - service: mqtt.publish
+                - action: mqtt.publish
                   data:
                     qos: 0
                     retain: false
@@ -422,7 +455,7 @@ action:
           - repeat:
               for_each: "{{ message_topics }}"
               sequence:
-                - service: mqtt.publish
+                - action: mqtt.publish
                   data:
                     qos: 0
                     retain: false
@@ -437,7 +470,7 @@ action:
           - repeat:
               for_each: "{{ notification_topics }}"
               sequence:
-                - service: mqtt.publish
+                - action: mqtt.publish
                   data:
                     qos: 0
                     retain: false
@@ -447,7 +480,7 @@ action:
           - repeat:
               for_each: "{{ message_topics }}"
               sequence:
-                - service: mqtt.publish
+                - action: mqtt.publish
                   data:
                     qos: 0
                     retain: false
