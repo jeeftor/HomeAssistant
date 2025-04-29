@@ -22,9 +22,10 @@ blueprint:
       description: Select the Awtrix light
       selector:
         device:
-          integration: mqtt
-          manufacturer: Blueforcer
-          model: AWTRIX 3
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
           multiple: true
     app_name:
       name: Awtrix Applicaiton name
@@ -39,7 +40,8 @@ blueprint:
         entity:
           multiple: false
           filter:
-            - device_class: battery
+            - integration: mobile_app
+              device_class: battery
         # multiple: false
     message_text:
       name: Text to Display
@@ -66,11 +68,23 @@ blueprint:
               value: "1"
             - label: Icon moves with text but appears again when the text starts to scroll again
               value: "2"
+    show_below:
+      name: Show Below x percent
+      description: Only show the application on the clock when the battery level is below the specified percent
+
+      selector:
+        number:
+          min: 1
+          max: 101
+          unit_of_measurement: "percent"
+
+      default: 101
 
 mode: restart
 variables:
   device_ids: !input awtrix
   app_name: !input app_name
+  show_below: !input show_below
   devices_topics: >-
     {%- macro get_device_topic(device_id) %}
     {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
@@ -99,7 +113,7 @@ variables:
         "progress":"{{states[battery_sensor].state}}","pushIcon":1}
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     minutes: /1
 
 condition: []
@@ -107,7 +121,7 @@ action:
   - repeat:
       for_each: "{{ devices_topics }}"
       sequence:
-        - service: mqtt.publish
+        - action: mqtt.publish
           data:
             qos: 0
             retain: false
