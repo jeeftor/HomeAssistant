@@ -415,6 +415,40 @@ blueprint:
           unit_of_measurement: "sec"
       default: 30
 
+
+    show_overlay:
+      name: Show overlay animation 
+      description: >
+
+        Choose to show an animated overlay depicting the weather conditions. The following mappings are used:
+
+        - **Clear**: `clear-night`, `cloudy`, `exceptional`, `fog`, `partlycloudy`, `sunny`, `windy`, `windy-variant`  
+          → No animation, off
+
+        - **Frost**: `hail`
+          → Light frost effect on the display
+
+        - **Thunder**: `lightning`, `lightning-rainy`
+          → Rain animation with thunder flashes
+
+        - **Storm**: `pouring`  
+          → Heavy rain animation
+
+        - **Drizzle**: `rainy`  
+          → Light rain animation
+
+        - **Snow**: `snowy`, `snowy-rainy`
+          → Snow falls vertically
+
+      selector:
+        select:
+          options:
+          - label: Show weather overlay animation
+            value: "true"
+          - label: Do not show weather overlay animation
+            value: "false"
+      default: "true"
+
     #-----------------------------------------
     # This was really annoying to generate :)
     #-----------------------------------------
@@ -820,14 +854,17 @@ variables:
     'partlycloudy': 'clear',
     'pouring': 'storm',
     'rainy': 'drizzle',
+    'rain': 'rain',
     'snowy': 'snow',
     'snowy-rainy': 'snow',
     'sunny': 'clear',
     'windy': 'clear', 
     'windy-variant': 'clear'})}}
-
   overlay: >
     {{ overlay_dict[current_condition] }}
+  show_overlay_input: !input show_overlay
+  show_overlay: >
+    {{ (show_overlay_input) == 'true' }}
 
   #-----------
   # Moon Icon
@@ -982,8 +1019,10 @@ action:
                   "pushIcon": 2,
                   "lifetime": 120,
                   "lifetimeMode":1,
-                  "weather": "{{current_condition}}",
-                  "overlay": "{{overlay}}"
+                  "weather": "{{current_condition}}"
+                  {% if show_overlay %}
+                  ,"overlay": "{{overlay}}"
+                  {% endif %}
                   }
 
         - action: mqtt.publish
