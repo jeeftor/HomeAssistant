@@ -48,14 +48,48 @@ blueprint:
 
     on_icon:
       name: 🟢 ON Icon
-      description: Icon name or LaMetric icon ID to show when the sensor is ON
+      description: >
+        Icon name or LaMetric icon ID to show when the sensor is ON.
+
+        **Custom icons from this repo** (upload first via `upload_icon.sh`):
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/clothes-wash/clothes-wash.gif) - `clothes-wash`
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/dishes/dishes-wash.gif) - `dishes-wash`
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_front_door/front_door_is_open.gif) - `front_door_is_open`
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_window/window_is_open.gif) - `window_is_open`
+
+        **Or use a LaMetric icon ID**, e.g.:
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/620_icon_thumb.gif?v=1) - `620` (checkmark)
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/108_icon_thumb.gif?v=1) - `108` (alert)
       selector:
         text:
       default: ""
 
     off_icon:
       name: ⚫ OFF Icon
-      description: Icon name or LaMetric icon ID to show when the sensor is OFF
+      description: >
+        Icon name or LaMetric icon ID to show when the sensor is OFF.
+
+        **Custom icons from this repo** (upload first via `upload_icon.sh`):
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/clothes-wash/clothes-done.gif) - `clothes-done`
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/dishes/dishes-done.gif) - `dishes-done`
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_front_door/front_door_close.gif) - `front_door_close`
+
+        - ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/door_monitor_window/window_close.gif) - `window_close`
+
+        **Or use a LaMetric icon ID**, e.g.:
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/620_icon_thumb.gif?v=1) - `620` (checkmark)
+
+        - ![](https://developer.lametric.com/content/apps/icon_thumbs/108_icon_thumb.gif?v=1) - `108` (alert)
       selector:
         text:
       default: ""
