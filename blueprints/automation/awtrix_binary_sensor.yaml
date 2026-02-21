@@ -1,0 +1,346 @@
+---
+blueprint:
+  name: AWTRIX Binary Sensor Monitor 🔛0️⃣
+  description: >
+    Display a binary sensor's state on an AWTRIX 3 device with customizable icons,
+    optional messages, elapsed time, and auto-clear after inactivity.
+
+    **Display logic:**
+
+    - **ON state**: shows the ON icon + optional message + optional elapsed time
+
+    - **OFF state**: shows the OFF icon + optional message + optional elapsed time
+
+    - **Unavailable / Unknown**: clears the app slot
+
+    - **Auto-clear**: removes the app after the sensor has been in the same state
+      for the configured number of hours (default 2 hrs)
+
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select one or more AWTRIX 3 devices
+      selector:
+        device:
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
+          multiple: true
+
+    app_name:
+      name: Application Name
+      description: Unique app name used in the MQTT topic — must not contain spaces
+      selector:
+        text:
+      default: binary_sensor_monitor
+
+    monitored_entity:
+      name: Monitored Entity
+      description: The binary sensor to monitor
+      selector:
+        entity:
+          filter:
+            domain: 
+              - binary_sensor
+              - input_boolean
+
+    on_icon:
+      name: 🟢 ON Icon
+      description: Icon name or LaMetric icon ID to show when the sensor is ON
+      selector:
+        text:
+      default: ""
+
+    off_icon:
+      name: ⚫ OFF Icon
+      description: Icon name or LaMetric icon ID to show when the sensor is OFF
+      selector:
+        text:
+      default: ""
+
+    on_message:
+      name: 💬 ON Message
+      description: >
+        Text to display when the sensor is ON.
+        Leave empty to show only the elapsed time (or just the icon if time is also disabled).
+      selector:
+        text:
+      default: ""
+
+    off_message:
+      name: 💬 OFF Message
+      description: >
+        Text to display when the sensor is OFF.
+        Leave empty to show only the elapsed time (or just the icon if time is also disabled).
+      selector:
+        text:
+      default: ""
+
+    show_on_time:
+      name: ⏱ Show elapsed time when ON
+      description: Append how long the sensor has been ON to the display text
+      selector:
+        boolean:
+      default: true
+
+    show_off_time:
+      name: ⏱ Show elapsed time when OFF
+      description: Append how long the sensor has been OFF to the display text
+      selector:
+        boolean:
+      default: true
+
+    clear_after:
+      name: ⏰ Auto-clear After (hours)
+      description: >
+        Remove the app from AWTRIX after the sensor has been in the same state
+        for this many hours. Set to **0** to never auto-clear.
+      selector:
+        number:
+          min: 0
+          max: 48
+          step: 0.5
+          unit_of_measurement: hours
+      default: 2
+
+    advanced:
+      name: Advanced Options
+      icon: mdi:cog
+      collapsed: true
+      input:
+        use_on_color:
+          name: 🎨 Use ON Color
+          description: Enable a custom color for the ON state text
+          selector:
+            boolean:
+          default: false
+
+        on_color:
+          name: 🎨 ON Color
+          description: Color for the ON state text (only used when Use ON Color is enabled)
+          selector:
+            color_rgb:
+          default: [255, 255, 255]
+
+        use_off_color:
+          name: 🎨 Use OFF Color
+          description: Enable a custom color for the OFF state text
+          selector:
+            boolean:
+          default: false
+
+        off_color:
+          name: 🎨 OFF Color
+          description: Color for the OFF state text (only used when Use OFF Color is enabled)
+          selector:
+            color_rgb:
+          default: [255, 255, 255]
+
+        invert:
+          name: 🔀 Invert ON/OFF
+          description: >
+            Swap the ON and OFF display logic. Useful when the sensor reports
+            the opposite of what you expect (e.g. `on` means idle, `off` means active).
+          selector:
+            boolean:
+          default: false
+
+mode: restart
+
+variables:
+  device_ids: !input awtrix
+  app_name: !input app_name
+  monitored_entity: !input monitored_entity
+  on_icon: !input on_icon
+  off_icon: !input off_icon
+  on_message: !input on_message
+  off_message: !input off_message
+  show_on_time: !input show_on_time
+  show_off_time: !input show_off_time
+  clear_after: !input clear_after
+  use_on_color: !input use_on_color
+  on_color_rgb: !input on_color
+  use_off_color: !input use_off_color
+  off_color_rgb: !input off_color
+  invert: !input invert
+
+  message_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device = get_device_topic(device_id) | replace(' ','') %}
+      {%- set ns.devices = ns.devices + [device ~ '/custom/' ~ app_name] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list }}
+
+  last_change_seconds: >-
+    {{ (as_timestamp(now()) - as_timestamp(states[monitored_entity].last_changed | default(now()))) | int }}
+
+  last_changed_str: >-
+    {{ relative_time(states[monitored_entity].last_changed | default(0))
+      | replace('hours', 'hr')
+      | replace('hour', 'hr')
+      | replace('seconds', 'sec')
+      | replace('minutes', 'min')
+      | replace('minute', 'min') }}
+
+  on_text: >-
+    {%- set parts = [] %}
+    {%- if on_message %}{% set parts = parts + [on_message] %}{% endif %}
+    {%- if show_on_time and last_change_seconds | int >= 60 %}{% set parts = parts + [last_changed_str] %}{% endif %}
+    {{ parts | join(' ') | trim }}
+
+  off_text: >-
+    {%- set parts = [] %}
+    {%- if off_message %}{% set parts = parts + [off_message] %}{% endif %}
+    {%- if show_off_time and last_change_seconds | int >= 60 %}{% set parts = parts + [last_changed_str] %}{% endif %}
+    {{ parts | join(' ') | trim }}
+
+  on_payload: >-
+    {"icon":"{{ on_icon }}","text":"{{ on_text }}"
+    {%- if use_on_color %},"color":"{{ '#%02X%02X%02X' | format(on_color_rgb[0], on_color_rgb[1], on_color_rgb[2]) }}"{% endif %}}
+
+  off_payload: >-
+    {"icon":"{{ off_icon }}","text":"{{ off_text }}"
+    {%- if use_off_color %},"color":"{{ '#%02X%02X%02X' | format(off_color_rgb[0], off_color_rgb[1], off_color_rgb[2]) }}"{% endif %}}
+
+trigger_variables:
+  tv_clear_after: !input clear_after
+  tv_monitored_entity: !input monitored_entity
+
+trigger:
+  - trigger: state
+    entity_id: !input monitored_entity
+    to: "on"
+    id: turned_on
+
+  - trigger: state
+    entity_id: !input monitored_entity
+    to: "off"
+    id: turned_off
+
+  - trigger: state
+    entity_id: !input monitored_entity
+    to:
+      - unavailable
+      - unknown
+    id: unavailable
+
+  # Fires after the sensor has been in the same state for clear_after hours.
+  # When clear_after = 0 we use 9999 hrs so this trigger never realistically fires.
+  - trigger: state
+    entity_id: !input monitored_entity
+    for:
+      hours: "{{ tv_clear_after | float(0) if tv_clear_after | float(0) > 0 else 9999 }}"
+    id: clear
+
+  - trigger: time_pattern
+    minutes: /1
+    id: time
+
+condition: []
+
+action:
+  - choose:
+      # ── Sensor turned ON ──────────────────────────────────────────────────
+      - conditions:
+          - condition: trigger
+            id: turned_on
+        sequence:
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{{ off_payload if invert else on_payload }}"
+
+      # ── Sensor turned OFF ─────────────────────────────────────────────────
+      - conditions:
+          - condition: trigger
+            id: turned_off
+        sequence:
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{{ on_payload if invert else off_payload }}"
+
+      # ── Unavailable / Unknown → clear app slot ────────────────────────────
+      - conditions:
+          - condition: trigger
+            id: unavailable
+        sequence:
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{}"
+
+      # ── Auto-clear timeout ────────────────────────────────────────────────
+      - conditions:
+          - condition: trigger
+            id: clear
+        sequence:
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{}"
+
+      # ── Time update: refresh elapsed time every minute ──────────────────
+      # Skipped once clear_after has elapsed — prevents resurrecting the app
+      # after the clear trigger fired. (clear_after == 0 means never clear.)
+      - conditions:
+          - condition: trigger
+            id: time
+          - condition: template
+            value_template: "{{ states(monitored_entity) == 'on' }}"
+          - condition: template
+            value_template: "{{ clear_after | float(0) == 0 or last_change_seconds | int < (clear_after | float * 3600) }}"
+        sequence:
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{{ off_payload if invert else on_payload }}"
+
+      - conditions:
+          - condition: trigger
+            id: time
+          - condition: template
+            value_template: "{{ states(monitored_entity) == 'off' }}"
+          - condition: template
+            value_template: "{{ clear_after | float(0) == 0 or last_change_seconds | int < (clear_after | float * 3600) }}"
+        sequence:
+          - repeat:
+              for_each: "{{ message_topics }}"
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    qos: 0
+                    retain: false
+                    topic: "{{ repeat.item }}"
+                    payload: "{{ on_payload if invert else off_payload }}"
