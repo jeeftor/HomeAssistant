@@ -687,9 +687,9 @@ variables:
   text_available_width: >
     {%- if show_moon %}16{%- else %}24{%- endif %}
   text_len: >-
-    {%- macro get_text_len(string) %}
+    {%- macro get_text_len(text) %}
     {%- set length = namespace(value=0) %}
-    {%- for char in string %}
+    {%- for char in text|string() %}
       {%- if char.isdigit() %}
         {%- set length.value = length.value + 3 %}
       {%- elif char == '°' %}
