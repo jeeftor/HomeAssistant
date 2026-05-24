@@ -449,6 +449,21 @@ blueprint:
             value: "false"
       default: "true"
 
+    show_global_overlay:
+      name: Show weather global overlay animation
+      description: >
+        When enabled, the overlay animation is applied as a global overlay (all apps show the same overlay animation).
+        
+        Note: This will only work if "Show overlay animation" is also enabled.
+      selector:
+        select:
+          options:
+          - label: Show weather overlay as a global overlay animation
+            value: "true"
+          - label: Do not show a global overlay animation
+            value: "false"
+      default: "false"
+
     #-----------------------------------------
     # This was really annoying to generate :)
     #-----------------------------------------
@@ -866,6 +881,10 @@ variables:
   show_overlay: >
     {{ (show_overlay_input) == 'true' }}
 
+  show_global_overlay_input: !input show_global_overlay
+  show_global_overlay: >
+    {{ (show_global_overlay_input) == 'true' }}
+
   #-----------
   # Moon Icon
   #-----------
@@ -925,6 +944,17 @@ action:
   - repeat:
       for_each: "{{ topics }}"
       sequence:
+        - choose:
+            - conditions: >-
+                {{ show_global_overlay }}
+              sequence:
+                - action: mqtt.publish
+                  data:
+                    topic: >-
+                      {{ repeat.item | regex_replace("/custom/.*$", "/settings") }}
+                    payload: >-
+                      {"OVERLAY":"{% if show_overlay %}{{overlay}}{% else %}clear{% endif %}"}
+
         - action: mqtt.publish
           data:
             topic: "{{repeat.item}}"
@@ -1020,7 +1050,7 @@ action:
                   "lifetime": 120,
                   "lifetimeMode":1,
                   "weather": "{{current_condition}}"
-                  {% if show_overlay %}
+                  {% if show_overlay and not show_global_overlay %}
                   ,"overlay": "{{overlay}}"
                   {% endif %}
                   }
