@@ -79,7 +79,7 @@ upload_icon() {
     curl -L -s -X GET "$GIF_FILE" -o "$TEMP_FILE"
 
     if verify_gif "$TEMP_FILE"; then
-        curl -X POST -F "file=@$TEMP_FILE;filename=/ICONS/$FILE_NAME" "$URL"
+        curl -X POST -F "file=@$TEMP_FILE;filename=/ICONS/$FILE_NAME" "$URL" $AUTH
         echo -e "${GREEN}Uploaded icon:${NC} $FILE_NAME${NC}"
     else
         echo -e "${RED}Error: File $FILE_NAME does not appear to be a valid GIF file.${NC}"
@@ -87,6 +87,19 @@ upload_icon() {
     fi
 
     rm -f "$TEMP_FILE"
+}
+
+# Prompt for authentication if required
+prompt_for_auth() {
+    read -rp "Is authentication required on awtrix device? (y/n): " auth_needed
+    if [[ "$auth_needed" == "y" ]]; then
+        read -rp "Enter username: " USERNAME
+        read -rsp "Enter password: " PASSWORD
+        echo
+        AUTH="--user \"$USERNAME:$PASSWORD\""
+    else
+        AUTH=""
+    fi
 }
 
 # Prompt for IP address if not provided as a command-line argument
@@ -111,6 +124,9 @@ main() {
 
     # Prompt for IP address
     prompt_ip_address "$1"
+
+    # Prompt for Auth
+    prompt_for_auth
 
     # List icon directories
     echo -e "${GREEN}Available icon directories:${NC}"
