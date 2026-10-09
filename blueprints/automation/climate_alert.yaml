@@ -47,10 +47,11 @@ blueprint:
             - "cool"
 
     notify_device:
-      name: Device to notify
-      description: Device needs to run the official Home Assistant app to receive notifications
+      name: Device(s) to notify
+      description: Devices running the official Home Assistant app to receive notifications
       selector:
         device:
+          multiple: true
           filter:
             integration: mobile_app
 
@@ -58,6 +59,8 @@ variables:
   mode: !input mode
   temp: !input temp
   climate: !input climate
+  notify_device_input: !input notify_device
+  notify_devices: "{{ notify_device_input if notify_device_input is list else [notify_device_input] }}"
 
 trigger:
   - trigger: state
@@ -77,21 +80,24 @@ action:
                 condition: template
                 value_template: "{{ mode=='heat' and (states(climate) == 'heat_cool') and (state_attr(climate, 'temperature') > temp)}}"
         sequence:
-          - device_id: !input notify_device
-            domain: mobile_app
-            type: notify
-            message: >-
-              🔥️ Heat set to {{ int(state_attr('climate.downstairs','temperature'))}}° 🌡️
-            data:
-              actions:
-                - action: DO_NOTHING
-                  title: Leave it as-is!
-                  icon: sfsymbols:checkmark.circle
-                  destructive: false
-                - action: SET_TO_TEMP
-                  title: Set it to {{ temp }}
-                  destructive: false
-                  icon: sfsymbols::arrow.down.circle
+          - repeat:
+              for_each: "{{ notify_devices }}"
+              sequence:
+                - device_id: "{{ repeat.item }}"
+                  domain: mobile_app
+                  type: notify
+                  message: >-
+                    🔥️ Heat set to {{ int(state_attr(climate,'temperature'))}}° 🌡️
+                  data:
+                    actions:
+                      - action: DO_NOTHING
+                        title: Leave it as-is!
+                        icon: sfsymbols:checkmark.circle
+                        destructive: false
+                      - action: SET_TO_TEMP
+                        title: Set it to {{ temp }}
+                        destructive: false
+                        icon: sfsymbols::arrow.down.circle
       - conditions:
           - condition: or
             conditions:
@@ -102,21 +108,24 @@ action:
                 condition: template
                 value_template: "{{ mode=='cool' and (states(climate) == 'heat_cool') and (state_attr(climate, 'temperature') < temp)}}"
         sequence:
-          - device_id: !input notify_device
-            domain: mobile_app
-            type: notify
-            message: >-
-              🥶️ AC set to {{ int(state_attr('climate.downstairs','temperature'))}}° ❄️
-            data:
-              actions:
-                - action: DO_NOTHING
-                  title: Leave it as-is!
-                  icon: sfsymbols:checkmark.circle
-                  destructive: false
-                - action: SET_TO_TEMP
-                  title: Set it to {{ temp }}
-                  destructive: false
-                  icon: sfsymbols::arrow.up.circle
+          - repeat:
+              for_each: "{{ notify_devices }}"
+              sequence:
+                - device_id: "{{ repeat.item }}"
+                  domain: mobile_app
+                  type: notify
+                  message: >-
+                    🥶️ AC set to {{ int(state_attr(climate,'temperature'))}}° ❄️
+                  data:
+                    actions:
+                      - action: DO_NOTHING
+                        title: Leave it as-is!
+                        icon: sfsymbols:checkmark.circle
+                        destructive: false
+                      - action: SET_TO_TEMP
+                        title: Set it to {{ temp }}
+                        destructive: false
+                        icon: sfsymbols::arrow.up.circle
   - alias: Wait for Input
     wait_for_trigger:
       - trigger: event
