@@ -83,21 +83,24 @@ action:
           - repeat:
               for_each: "{{ notify_devices }}"
               sequence:
-                - device_id: "{{ repeat.item }}"
-                  domain: mobile_app
-                  type: notify
-                  message: >-
-                    🔥️ Heat set to {{ int(state_attr(climate,'temperature'))}}° 🌡️
+                - variables:
+                    notify_entity: "{{ device_entities(repeat.item) | select('match', '^notify\\.') | list | first }}"
+                - action: notify.send_message
+                  target:
+                    entity_id: "{{ notify_entity }}"
                   data:
-                    actions:
-                      - action: DO_NOTHING
-                        title: Leave it as-is!
-                        icon: sfsymbols:checkmark.circle
-                        destructive: false
-                      - action: SET_TO_TEMP
-                        title: Set it to {{ temp }}
-                        destructive: false
-                        icon: sfsymbols::arrow.down.circle
+                    message: >-
+                      🔥️ Heat set to {{ int(state_attr(climate,'temperature'))}}° 🌡️
+                    data:
+                      actions:
+                        - action: DO_NOTHING
+                          title: Leave it as-is!
+                          icon: sfsymbols:checkmark.circle
+                          destructive: false
+                        - action: SET_TO_TEMP
+                          title: Set it to {{ temp }}
+                          destructive: false
+                          icon: sfsymbols::arrow.down.circle
       - conditions:
           - condition: or
             conditions:
@@ -111,21 +114,24 @@ action:
           - repeat:
               for_each: "{{ notify_devices }}"
               sequence:
-                - device_id: "{{ repeat.item }}"
-                  domain: mobile_app
-                  type: notify
-                  message: >-
-                    🥶️ AC set to {{ int(state_attr(climate,'temperature'))}}° ❄️
+                - variables:
+                    notify_entity: "{{ device_entities(repeat.item) | select('match', '^notify\\.') | list | first }}"
+                - action: notify.send_message
+                  target:
+                    entity_id: "{{ notify_entity }}"
                   data:
-                    actions:
-                      - action: DO_NOTHING
-                        title: Leave it as-is!
-                        icon: sfsymbols:checkmark.circle
-                        destructive: false
-                      - action: SET_TO_TEMP
-                        title: Set it to {{ temp }}
-                        destructive: false
-                        icon: sfsymbols::arrow.up.circle
+                    message: >-
+                      🥶️ AC set to {{ int(state_attr(climate,'temperature'))}}° ❄️
+                    data:
+                      actions:
+                        - action: DO_NOTHING
+                          title: Leave it as-is!
+                          icon: sfsymbols:checkmark.circle
+                          destructive: false
+                        - action: SET_TO_TEMP
+                          title: Set it to {{ temp }}
+                          destructive: false
+                          icon: sfsymbols::arrow.up.circle
   - alias: Wait for Input
     wait_for_trigger:
       - trigger: event
