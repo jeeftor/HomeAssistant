@@ -1,0 +1,29 @@
+---
+blueprint:
+  name: A Trigger test
+  description: >
+    This blueprint is to see if we can pass a timne variable in
+  domain: automation
+  input:
+    # usertrigger:
+    #   selector:
+    #     trigger:
+    time_pattern:
+      selector:
+        number:
+          min: 1
+          max: 60
+trigger_variables:
+  tp: !input time_pattern
+triggers:
+  - trigger: event
+    event_type: manual_event
+  # - triggers: !input usertrigger
+  - trigger: time_pattern
+    minutes: "/{{tp | int}}"
+
+action:
+  - action: mqtt.publish
+    data:
+      topic: "dev"
+      payload: "hi"

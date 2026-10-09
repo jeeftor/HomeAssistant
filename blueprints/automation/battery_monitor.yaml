@@ -1,0 +1,95 @@
+blueprint:
+  name: Low Battery Notifier
+  description: >
+    Periodically checks selected battery sensors and sends a notification
+    if any are below the configured threshold.
+  domain: automation
+  input:
+    battery_sensors:
+      name: Battery Sensors
+      description: Select all battery level sensors to monitor.
+      selector:
+        entity:
+          multiple: true
+          device_class: battery
+    threshold:
+      name: Low Battery Threshold (%)
+      description: Alert when battery is at or below this level.
+      default: 20
+      selector:
+        number:
+          min: 5
+          max: 50
+          unit_of_measurement: "%"
+    notify_target:
+      name: Notification Target
+      description: >
+        The notification service to call, e.g. notify.mobile_app_your_phone
+        or notify.notify for the default.
+      selector:
+        text:
+    notify_time:
+      name: Time to Check
+      description: What time of day to run the check.
+      default: "08:00:00"
+      selector:
+        time:
+    notify_days:
+      name: Days to Notify
+      description: Which days of the week to send the report.
+      default:
+        - mon
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: mon
+            - label: Tuesday
+              value: tue
+            - label: Wednesday
+              value: wed
+            - label: Thursday
+              value: thu
+            - label: Friday
+              value: fri
+            - label: Saturday
+              value: sat
+            - label: Sunday
+              value: sun
+
+variables:
+  battery_sensors: !input battery_sensors
+  threshold: !input threshold
+  low_batteries: >
+    {% set ns = namespace(devices=[]) %}
+    {% for entity_id in battery_sensors %}
+      {% set level = states(entity_id) | int(-1) %}
+      {% if level >= 0 and level <= threshold %}
+        {% set name = state_attr(entity_id, 'friendly_name') or entity_id %}
+        {% set ns.devices = ns.devices + [name ~ ' (' ~ level ~ '%)'] %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.devices }}
+
+trigger:
+  - platform: time
+    at: !input notify_time
+
+condition:
+  - condition: template
+    value_template: >
+      {{ now().strftime('%a') | lower in notify_days }}
+  - condition: template
+    value_template: "{{ low_batteries | length > 0 }}"
+
+action:
+  - variables:
+      notify_target: !input notify_target
+      notify_days: !input notify_days
+  - service: "{{ notify_target }}"
+    data:
+      title: "🔋 Low Battery Alert"
+      message: >
+        The following devices have low batteries:
+        {{ low_batteries | join(', ') }}

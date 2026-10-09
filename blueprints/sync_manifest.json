@@ -1,0 +1,167 @@
+{
+  "repo": "jeeftor/HomeAssistant",
+  "branch": "master",
+  "blueprints_root": "blueprints",
+  "entries": [
+    {
+      "repo": "automation/awtrix_AQI.yaml",
+      "ha": "jeeftor/awtrix_AQI.yaml"
+    },
+    {
+      "repo": "automation/awtrix_battery_monitor.yaml",
+      "ha": "jeeftor/awtrix_battery_monitor.yaml"
+    },
+    {
+      "repo": "automation/awtrix_binary_sensor.yaml",
+      "ha": "jeeftor/awtrix_binary_sensor.yaml"
+    },
+    {
+      "repo": "automation/awtrix_calendar_ASD.yaml",
+      "ha": "jeeftor/awtrix_calendar_ASD.yaml"
+    },
+    {
+      "repo": "automation/awtrix_calendar_countdown.yaml",
+      "ha": "jeeftor/awtrix_calendar_countdown.yaml"
+    },
+    {
+      "repo": "automation/awtrix_calendar_service.yaml",
+      "ha": "jeeftor/awtrix_calendar_service.yaml"
+    },
+    {
+      "repo": "automation/awtrix_door_status.yaml",
+      "ha": "jeeftor/awtrix_door_status.yaml"
+    },
+    {
+      "repo": "automation/awtrix_door_status_with_lock.yaml",
+      "ha": "jeeftor/awtrix_door_status_with_lock.yaml"
+    },
+    {
+      "repo": "automation/awtrix_flume_leak_and_flow.yaml",
+      "ha": "jeeftor/awtrix_flume_leak_and_flow.yaml"
+    },
+    {
+      "repo": "automation/awtrix_hvac.yaml",
+      "ha": "jeeftor/awtrix_hvac.yaml"
+    },
+    {
+      "repo": "automation/awtrix_indicator.yaml",
+      "ha": "jeeftor/awtrix_indicator.yaml"
+    },
+    {
+      "repo": "automation/awtrix_phone_monitor.yaml",
+      "ha": "jeeftor/awtrix_phone_monitor.yaml"
+    },
+    {
+      "repo": "automation/awtrix_pollen accuweather.yaml",
+      "ha": "jeeftor/awtrix_pollen accuweather.yaml"
+    },
+    {
+      "repo": "automation/awtrix_pollen.yaml",
+      "ha": "jeeftor/awtrix_pollen.yaml"
+    },
+    {
+      "repo": "automation/awtrix_pollen_template.yaml",
+      "ha": "jeeftor/awtrix_pollen_template.yaml"
+    },
+    {
+      "repo": "automation/awtrix_weatherflow.yaml",
+      "ha": "jeeftor/awtrix_weatherflow.yaml"
+    },
+    {
+      "repo": "automation/awtrix_weatherflow_uv_hum.yaml",
+      "ha": "jeeftor/awtrix_weatherflow_uv_hum.yaml"
+    },
+    {
+      "repo": "automation/battery_monitor.yaml",
+      "ha": "jeeftor/battery_monitor.yaml"
+    },
+    {
+      "repo": "automation/camcam.yaml",
+      "ha": "jeeftor/camcam.yaml"
+    },
+    {
+      "repo": "automation/cover_alert.yaml",
+      "ha": "jeeftor/cover_alert.yaml"
+    },
+    {
+      "repo": "automation/cover_open_alert_with_action.yaml",
+      "ha": "jeeftor/cover_open_alert_with_action.yaml"
+    },
+    {
+      "repo": "automation/cover_state_monitor.yaml",
+      "ha": "jeeftor/cover_state_monitor.yaml"
+    },
+    {
+      "repo": "automation/dev_blueprint.yaml",
+      "ha": "jeeftor/dev_blueprint.yaml"
+    },
+    {
+      "repo": "automation/fan_sync.yaml",
+      "ha": "jeeftor/fan_sync.yaml"
+    },
+    {
+      "repo": "automation/fireplace_sounds.yaml",
+      "ha": "jeeftor/fireplace_sounds.yaml"
+    },
+    {
+      "repo": "automation/fireplace_sounds_v2.yaml",
+      "ha": "jeeftor/fireplace_sounds_v2.yaml"
+    },
+    {
+      "repo": "automation/hue_dimmer.yaml",
+      "ha": "jeeftor/hue_dimmer.yaml"
+    },
+    {
+      "repo": "automation/inovelli_door_cover_notification.yaml",
+      "ha": "jeeftor/inovelli_door_cover_notification.yaml"
+    },
+    {
+      "repo": "automation/led_status.yaml",
+      "ha": "jeeftor/led_status.yaml"
+    },
+    {
+      "repo": "automation/camspeak_arrival_blueprint.yaml",
+      "ha": "kb.vookie.net/camspeak_arrival_blueprint.yaml"
+    },
+    {
+      "repo": "automation/camspeak_preset_arrival.yaml",
+      "ha": "kb.vookie.net/camspeak_preset_arrival.yaml"
+    },
+    {
+      "repo": "automation/camspeak_tts_arrival.yaml",
+      "ha": "kb.vookie.net/camspeak_tts_arrival.yaml"
+    },
+    {
+      "repo": "script/HelloFairy.yaml",
+      "ha": "jeeftor/HelloFairy.yaml"
+    },
+    {
+      "repo": "script/cal_agenda.yaml",
+      "ha": "jeeftor/cal_agenda.yaml"
+    },
+    {
+      "repo": "script/jump-alert.yaml",
+      "ha": "jeeftor/jump-alert.yaml"
+    },
+    {
+      "repo": "automation/auto-off-timer.yaml",
+      "ha": "auto-off-timer.yaml"
+    },
+    {
+      "repo": "automation/climate-alert.yaml",
+      "ha": "climate-alert.yaml"
+    },
+    {
+      "repo": "automation/inovelli_door_cover_notification.yaml",
+      "ha": "inovelli_door_cover_notification.yaml"
+    },
+    {
+      "repo": "automation/light-sync.yaml",
+      "ha": "light-sync.yaml"
+    },
+    {
+      "repo": "automation/on-off-schedule.yaml",
+      "ha": "on-off-schedule.yaml"
+    }
+  ]
+}

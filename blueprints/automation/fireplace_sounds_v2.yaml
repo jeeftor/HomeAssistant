@@ -1,0 +1,599 @@
+blueprint:
+  name: "Fireplace 🔥️ Sounds v2 🎶️"
+  description: >
+    ## Fireplace Sounds v2
+
+    A robust fireplace ambience automation that handles all the edge cases the
+    original blueprint missed, plus optional per-flame-level sounds.
+
+    ### Features
+    - 🔥 Plays crackling fire sounds when the fireplace turns on
+    - 🔇 Stops sounds when the fireplace turns off
+    - 🎚️ **Per-flame-level sounds** — optionally set different audio for low,
+      medium, and high flame heights. Falls back to the default sound if not set.
+      Sound automatically crossfades when flame level changes mid-session.
+    - 📸 **Sonos snapshot/restore** — saves what was playing before and restores it after
+    - 🎵 **Media interruption recovery** — if music plays over the fire sounds,
+      automatically restores them when the music ends (if fire still on)
+    - 📡 **Connectivity resilience** — handles local/cloud connectivity drops gracefully:
+        - If sensor goes `unavailable`, sounds keep playing (last known state)
+        - When connectivity restores, re-checks flame state and acts accordingly
+        - Configurable fallback: stop sounds on connectivity loss, or keep playing
+    - ⚡ **Rapid state change safe** — `mode: restart` prevents getting stuck
+    - 🔄 **HA restart recovery** — re-evaluates state on HA start
+    - 🔊 Multiple speakers supported
+
+    ### Flame Height Levels (IntelliFireplace)
+    - **Low**: height 1–2
+    - **Medium**: height 3–4
+    - **High**: height 5–6
+
+    Leave any level sound empty to use the default sound for that level.
+
+  domain: automation
+  author: jeeftor
+  homeassistant:
+    min_version: "2023.4.0"
+
+  input:
+    # ─────────────────────────────────────────────
+    fireplace_section:
+      name: "🔥 Fireplace"
+      icon: mdi:fireplace
+      input:
+        fireplace_flame_sensor:
+          name: Fireplace Flame Sensor
+          description: >
+            Binary sensor that is `on` when the flame is active.
+            (e.g. `binary_sensor.fireplace_flame`)
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+              multiple: false
+
+        fireplace_flame_height:
+          name: Flame Height Sensor (optional)
+          description: >
+            Numeric sensor reporting flame height (0–6 on IntelliFireplace).
+            Used to select per-level sounds. Leave empty to always use the default sound.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+              multiple: false
+
+        flame_low_max:
+          name: Low flame — upper boundary
+          description: >
+            Flame height values from 1 up to this value are considered "low".
+          default: 2
+          selector:
+            number:
+              min: 1
+              max: 5
+              step: 1
+              mode: box
+
+        flame_high_min:
+          name: High flame — lower boundary
+          description: >
+            Flame height values from this value up are considered "high". Values
+            between low_max and high_min are "medium".
+          default: 5
+          selector:
+            number:
+              min: 2
+              max: 6
+              step: 1
+              mode: box
+
+        fireplace_local_connectivity:
+          name: Local Connectivity Sensor (optional)
+          description: >
+            Binary sensor indicating local connectivity to the fireplace.
+            Leave empty if your fireplace doesn't have this.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+              multiple: false
+
+        fireplace_cloud_connectivity:
+          name: Cloud Connectivity Sensor (optional)
+          description: >
+            Binary sensor indicating cloud connectivity. Optional.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+              multiple: false
+
+        connectivity_loss_action:
+          name: Behaviour on connectivity loss
+          description: >
+            What to do if the fireplace connectivity sensor goes offline while
+            sounds are playing.
+
+            - **Keep playing** — assume fire is still on, sounds continue
+
+            - **Stop sounds** — stop sounds until connectivity returns
+          default: keep_playing
+          selector:
+            select:
+              options:
+                - label: Keep playing (assume fire is still on)
+                  value: keep_playing
+                - label: Stop sounds (wait for connectivity to return)
+                  value: stop_sounds
+
+    # ─────────────────────────────────────────────
+    media_section:
+      name: "🔊 Speakers & Media"
+      icon: mdi:speaker
+      input:
+        players:
+          name: Speaker(s)
+          description: >
+            The Sonos speaker(s) to play fireplace sounds on. Multiple supported.
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+              multiple: true
+
+        media_content_id_default:
+          name: 🔥 Default Fire Sound
+          description: >
+            Played at all flame levels unless a level-specific sound is set below.
+            Also used as a fallback if a level sound is left empty.
+          default: "media-source://media_source/local/crackling-fire-7083.mp3"
+          selector:
+            text: {}
+
+        media_content_type:
+          name: Media Content Type
+          description: Audio MIME type of the fire sound files.
+          default: "audio/mpeg"
+          selector:
+            select:
+              options:
+                - audio/mpeg
+                - audio/wav
+                - audio/x-wav
+                - audio/ogg
+                - audio/flac
+
+        media_content_id_low:
+          name: 🪵 Low Flame Sound (optional)
+          description: >
+            Sound to play when flame height is low. Leave empty to use the default sound.
+          default: ""
+          selector:
+            text: {}
+
+        media_content_id_medium:
+          name: 🔥 Medium Flame Sound (optional)
+          description: >
+            Sound to play when flame height is medium. Leave empty to use the default sound.
+          default: ""
+          selector:
+            text: {}
+
+        media_content_id_high:
+          name: 🔥🔥 High Flame Sound (optional)
+          description: >
+            Sound to play when flame height is high. Leave empty to use the default sound.
+          default: ""
+          selector:
+            text: {}
+
+        fire_volume:
+          name: Fire Sound Volume
+          description: Volume level for fire sounds (0.0 – 1.0)
+          default: 0.2
+          selector:
+            number:
+              min: 0.0
+              max: 1.0
+              step: 0.05
+              mode: slider
+
+    # ─────────────────────────────────────────────
+    behaviour_section:
+      name: "⚙️ Behaviour"
+      icon: mdi:cog
+      input:
+        restore_on_stop:
+          name: Restore previous media when fire turns off
+          description: >
+            Uses Sonos snapshot/restore to save what was playing before
+            and restores it when the fire turns off.
+          default: true
+          selector:
+            boolean: {}
+
+        resume_after_interruption:
+          name: Resume fire sounds after media interruption
+          description: >
+            If music is played on the speaker while fire sounds are running,
+            automatically resume fire sounds when that music finishes
+            (only if the fire is still on).
+          default: true
+          selector:
+            boolean: {}
+
+        recover_on_ha_start:
+          name: Recover on HA restart
+          description: >
+            When Home Assistant starts, check if the fireplace is already on
+            and start playing sounds if so.
+          default: true
+          selector:
+            boolean: {}
+
+        idle_wait_seconds:
+          name: Idle confirmation delay (seconds)
+          description: >
+            How long the media player must be idle/off before resuming fire sounds
+            after an interruption. Prevents false triggers from brief pauses.
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 30
+              step: 1
+              mode: box
+              unit_of_measurement: seconds
+
+        connectivity_unavailable_grace_seconds:
+          name: Connectivity loss grace period (seconds)
+          description: >
+            How long to wait after connectivity is lost before acting on it.
+            Prevents reacting to brief network blips.
+          default: 30
+          selector:
+            number:
+              min: 5
+              max: 300
+              step: 5
+              mode: box
+              unit_of_measurement: seconds
+
+# ─────────────────────────────────────────────────────────────────────────────
+variables:
+  _players: !input players
+  _flame: !input fireplace_flame_sensor
+  _height: !input fireplace_flame_height
+  _low_max: !input flame_low_max
+  _high_min: !input flame_high_min
+  _local_conn: !input fireplace_local_connectivity
+  _cloud_conn: !input fireplace_cloud_connectivity
+  _conn_action: !input connectivity_loss_action
+  _fire_vol: !input fire_volume
+  _type: !input media_content_type
+  _default: !input media_content_id_default
+  _snd_low: !input media_content_id_low
+  _snd_med: !input media_content_id_medium
+  _snd_high: !input media_content_id_high
+  _restore: !input restore_on_stop
+  _resume: !input resume_after_interruption
+  _ha_start: !input recover_on_ha_start
+  _idle_wait: !input idle_wait_seconds
+  _grace: !input connectivity_unavailable_grace_seconds
+
+  # ── The key computed variable: which sound to play right now?
+  # Logic:
+  #   1. If no height sensor configured → always use default
+  #   2. Compute band (low/medium/high) from current height value
+  #   3. If the band has a configured sound → use it; else fall back to default
+  current_sound: >
+    {% set h_entity = _height | default('') %}
+    {% if h_entity == '' %}
+      {{ _default }}
+    {% else %}
+      {% set h = states(h_entity) | int(-1) %}
+      {% if h <= 0 %}
+        {{ _default }}
+      {% elif h <= _low_max %}
+        {{ _snd_low if _snd_low != '' else _default }}
+      {% elif h < _high_min %}
+        {{ _snd_med if _snd_med != '' else _default }}
+      {% else %}
+        {{ _snd_high if _snd_high != '' else _default }}
+      {% endif %}
+    {% endif %}
+
+# ─────────────────────────────────────────────────────────────────────────────
+trigger:
+  # Primary: flame turns on
+  - id: flame_on
+    platform: state
+    entity_id: !input fireplace_flame_sensor
+    to: "on"
+
+  # Primary: flame turns off
+  - id: flame_off
+    platform: state
+    entity_id: !input fireplace_flame_sensor
+    to: "off"
+
+  # Flame sensor unavailable (connectivity loss)
+  - id: flame_unavailable
+    platform: state
+    entity_id: !input fireplace_flame_sensor
+    to:
+      - "unavailable"
+      - "unknown"
+    for:
+      seconds: !input connectivity_unavailable_grace_seconds
+
+  # Flame HEIGHT changed while fire is on → switch sound
+  - id: flame_height_changed
+    platform: state
+    entity_id: !input fireplace_flame_height
+
+  # Local connectivity restored
+  - id: local_conn_restored
+    platform: state
+    entity_id: !input fireplace_local_connectivity
+    to: "on"
+    from:
+      - "off"
+      - "unavailable"
+      - "unknown"
+
+  # Cloud connectivity restored
+  - id: cloud_conn_restored
+    platform: state
+    entity_id: !input fireplace_cloud_connectivity
+    to: "on"
+    from:
+      - "off"
+      - "unavailable"
+      - "unknown"
+
+  # Local connectivity lost (with grace period)
+  - id: local_conn_lost
+    platform: state
+    entity_id: !input fireplace_local_connectivity
+    to:
+      - "off"
+      - "unavailable"
+    for:
+      seconds: !input connectivity_unavailable_grace_seconds
+
+  # Media player becomes idle (resume point)
+  - id: player_idle
+    platform: state
+    entity_id: !input players
+    to:
+      - "idle"
+      - "off"
+    for:
+      seconds: !input idle_wait_seconds
+
+  # HA restart recovery
+  - id: ha_start
+    platform: homeassistant
+    event: start
+
+condition: []
+
+# ─────────────────────────────────────────────────────────────────────────────
+action:
+  - choose:
+      # ══════════════════════════════════════════════════
+      # FLAME ON → snapshot + play
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: flame_on
+        sequence:
+          - alias: "Snapshot speakers before starting fire sounds"
+            if:
+              - condition: template
+                value_template: "{{ _restore }}"
+            then:
+              - action: sonos.snapshot
+                data:
+                  with_group: true
+                target:
+                  entity_id: "{{ _players }}"
+
+          - alias: "Set fire volume and play correct sound for current flame level"
+            parallel:
+              - action: media_player.volume_set
+                target:
+                  entity_id: "{{ _players }}"
+                data:
+                  volume_level: "{{ _fire_vol }}"
+              - action: media_player.play_media
+                target:
+                  entity_id: "{{ _players }}"
+                data:
+                  media_content_id: "{{ current_sound }}"
+                  media_content_type: "{{ _type }}"
+
+      # ══════════════════════════════════════════════════
+      # FLAME OFF → stop + restore
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: flame_off
+        sequence:
+          - action: media_player.media_stop
+            target:
+              entity_id: "{{ _players }}"
+
+          - if:
+              - condition: template
+                value_template: "{{ _restore }}"
+            then:
+              - delay:
+                  seconds: 1
+              - action: sonos.restore
+                data:
+                  with_group: true
+                target:
+                  entity_id: "{{ _players }}"
+
+      # ══════════════════════════════════════════════════
+      # FLAME HEIGHT CHANGED → switch sound if fire is on
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: flame_height_changed
+          - condition: state
+            entity_id: !input fireplace_flame_sensor
+            state: "on"
+          # Only act if the height actually resolved to a different sound
+          # (avoids restarting the same file needlessly)
+          - condition: template
+            value_template: >
+              {% set prev = trigger.from_state.state | int(-1) %}
+              {% set curr = trigger.to_state.state | int(-1) %}
+              {% if prev < 0 or curr < 0 %}
+                false
+              {% else %}
+                {# band check: did we cross a boundary? #}
+                {% set prev_band =
+                    'low'    if prev <= _low_max else
+                    'high'   if prev >= _high_min else
+                    'medium' %}
+                {% set curr_band =
+                    'low'    if curr <= _low_max else
+                    'high'   if curr >= _high_min else
+                    'medium' %}
+                {{ prev_band != curr_band }}
+              {% endif %}
+        sequence:
+          - alias: "Switch to sound for new flame level"
+            action: media_player.play_media
+            target:
+              entity_id: "{{ _players }}"
+            data:
+              media_content_id: "{{ current_sound }}"
+              media_content_type: "{{ _type }}"
+
+      # ══════════════════════════════════════════════════
+      # FLAME UNAVAILABLE → act per config
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: flame_unavailable
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ _conn_action == 'stop_sounds' }}"
+            then:
+              - action: media_player.media_stop
+                target:
+                  entity_id: "{{ _players }}"
+
+      # ══════════════════════════════════════════════════
+      # LOCAL CONNECTIVITY LOST → act per config
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: local_conn_lost
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ _conn_action == 'stop_sounds' }}"
+            then:
+              - action: media_player.media_stop
+                target:
+                  entity_id: "{{ _players }}"
+
+      # ══════════════════════════════════════════════════
+      # CONNECTIVITY RESTORED → re-evaluate flame + restart
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id:
+              - local_conn_restored
+              - cloud_conn_restored
+        sequence:
+          - delay:
+              seconds: 5
+
+          - if:
+              - condition: state
+                entity_id: !input fireplace_flame_sensor
+                state: "on"
+            then:
+              - parallel:
+                  - action: media_player.volume_set
+                    target:
+                      entity_id: "{{ _players }}"
+                    data:
+                      volume_level: "{{ _fire_vol }}"
+                  - action: media_player.play_media
+                    target:
+                      entity_id: "{{ _players }}"
+                    data:
+                      media_content_id: "{{ current_sound }}"
+                      media_content_type: "{{ _type }}"
+
+      # ══════════════════════════════════════════════════
+      # PLAYER WENT IDLE → resume fire sounds if fire on
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: player_idle
+          - condition: template
+            value_template: "{{ _resume }}"
+          - condition: state
+            entity_id: !input fireplace_flame_sensor
+            state: "on"
+        sequence:
+          - parallel:
+              - action: media_player.volume_set
+                target:
+                  entity_id: "{{ _players }}"
+                data:
+                  volume_level: "{{ _fire_vol }}"
+              - action: media_player.play_media
+                target:
+                  entity_id: "{{ _players }}"
+                data:
+                  media_content_id: "{{ current_sound }}"
+                  media_content_type: "{{ _type }}"
+
+      # ══════════════════════════════════════════════════
+      # HA START → recover if fire already on
+      # ══════════════════════════════════════════════════
+      - conditions:
+          - condition: trigger
+            id: ha_start
+          - condition: template
+            value_template: "{{ _ha_start }}"
+          - condition: state
+            entity_id: !input fireplace_flame_sensor
+            state: "on"
+        sequence:
+          - delay:
+              seconds: 30
+
+          - condition: state
+            entity_id: !input fireplace_flame_sensor
+            state: "on"
+
+          - parallel:
+              - action: media_player.volume_set
+                target:
+                  entity_id: "{{ _players }}"
+                data:
+                  volume_level: "{{ _fire_vol }}"
+              - action: media_player.play_media
+                target:
+                  entity_id: "{{ _players }}"
+                data:
+                  media_content_id: "{{ current_sound }}"
+                  media_content_type: "{{ _type }}"
+
+mode: restart

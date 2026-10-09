@@ -1,0 +1,665 @@
+blueprint:
+  name: 🚪🔔 Cover Open Alert with Actions
+  description: Sends iOS notifications at 15-minute intervals when a cover (garage door) is left open, with options to close or dismiss. Optionally tracks temperature change while the cover is open.
+  domain: automation
+  input:
+    # === BASIC SETTINGS ===
+    cover_entity:
+      name: Cover Entity
+      description: The cover (garage door) to monitor
+      selector:
+        entity:
+          filter:
+            - domain: cover
+
+    notify_device:
+      name: Notification Devices
+      description: The iOS device(s) to send notifications to
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+          multiple: true
+
+    check_interval:
+      name: Check Interval
+      description: How often to check and notify (in minutes)
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: minutes
+
+    # === ADVANCED SETTINGS ===
+    lovelace_view:
+      name: (Advanced) Lovelace View Path
+      description: |
+        Optional - Navigate to this view when notification is tapped.
+        Examples: /lovelace-doors/0 or /lovelace/garage
+        Leave blank to disable click navigation.
+      default: ""
+      selector:
+        text:
+          multiline: false
+
+    camera_entity:
+      name: (Advanced) Camera Entity
+      description: Optional - Embed a camera snapshot in the notification
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: camera
+
+    notification_sound:
+      name: (Advanced) Notification Sound
+      description: Sound to play with the notification
+      default: "default"
+      selector:
+        select:
+          options:
+            - label: Default
+              value: "default"
+            - label: None (Silent)
+              value: "none"
+
+    interruption_level:
+      name: (Advanced) Interruption Level
+      description: How the notification interrupts the user (iOS 15+)
+      default: "active"
+      selector:
+        select:
+          options:
+            - label: Passive (No sound/vibration)
+              value: "passive"
+            - label: Active (Normal notification)
+              value: "active"
+            - label: Time Sensitive (Breaks through Focus)
+              value: "time-sensitive"
+            - label: Critical (Bypasses everything, always plays sound)
+              value: "critical"
+
+    notify_on_close:
+      name: (Advanced) Send Notification When Closed
+      description: Send a confirmation notification when the cover closes (from any means)
+      default: true
+      selector:
+        boolean:
+
+    enable_auto_close:
+      name: (Advanced) Enable Auto-Close
+      description: Automatically close the cover after a specified time
+      default: false
+      selector:
+        boolean:
+
+    auto_close_duration:
+      name: (Advanced) Auto-Close After (minutes)
+      description: How long to wait before automatically closing the cover
+      default: 180
+      selector:
+        number:
+          min: 5
+          max: 720
+          step: 5
+          unit_of_measurement: minutes
+
+    enable_escalating_alerts:
+      name: (Advanced) Enable Escalating Alerts
+      description: Increase alert severity based on how long the cover has been open
+      default: false
+      selector:
+        boolean:
+
+    escalation_threshold_1:
+      name: (Advanced) First Escalation Time (minutes)
+      description: Change to specified alert level after this duration
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 240
+          step: 5
+          unit_of_measurement: minutes
+
+    escalation_level_1:
+      name: (Advanced) First Escalation Level
+      description: Alert level after first threshold
+      default: "time-sensitive"
+      selector:
+        select:
+          options:
+            - label: Passive (No sound/vibration)
+              value: "passive"
+            - label: Active (Normal notification)
+              value: "active"
+            - label: Time Sensitive (Breaks through Focus)
+              value: "time-sensitive"
+            - label: Critical (Bypasses everything, always plays sound)
+              value: "critical"
+
+    escalation_threshold_2:
+      name: (Advanced) Second Escalation Time (minutes)
+      description: Change to specified alert level after this duration (must be greater than first threshold)
+      default: 60
+      selector:
+        number:
+          min: 10
+          max: 480
+          step: 5
+          unit_of_measurement: minutes
+
+    escalation_level_2:
+      name: (Advanced) Second Escalation Level
+      description: Alert level after second threshold
+      default: "critical"
+      selector:
+        select:
+          options:
+            - label: Passive (No sound/vibration)
+              value: "passive"
+            - label: Active (Normal notification)
+              value: "active"
+            - label: Time Sensitive (Breaks through Focus)
+              value: "time-sensitive"
+            - label: Critical (Bypasses everything, always plays sound)
+              value: "critical"
+
+    # === TEMPERATURE TRACKING ===
+    temperature_sensor:
+      name: (Advanced) Temperature Sensor
+      description: Optional - Track temperature change while the cover is open. The current temp is captured when the door opens and the delta is shown in each notification.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: temperature
+
+    temp_baseline_helper:
+      name: (Advanced) Temperature Baseline Helper
+      description: |
+        Optional - An input_number helper to store the temperature when the cover opens.
+        Create one in Settings → Devices & Services → Helpers → Create Helper → Number.
+        Required if using temperature tracking. Persists across HA restarts so the
+        baseline temp is preserved even if HA reboots while the door is open.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+
+    enable_debug_notifications:
+      name: (Advanced) Enable Debug Notifications
+      description: Show persistent notifications in Home Assistant UI for debugging
+      default: false
+      selector:
+        boolean:
+
+    enable_debug_logging:
+      name: (Advanced) Enable Debug Logging
+      description: Log detailed information to Home Assistant logs (check Settings > System > Logs)
+      default: false
+      selector:
+        boolean:
+
+variables:
+  cover_entity: !input cover_entity
+  notify_device: !input notify_device
+  lovelace_view: !input lovelace_view
+  camera_entity: !input camera_entity
+  check_interval: !input check_interval
+  notification_sound: !input notification_sound
+  interruption_level: !input interruption_level
+  notify_on_close: !input notify_on_close
+  enable_auto_close: !input enable_auto_close
+  auto_close_duration: !input auto_close_duration
+  enable_escalating_alerts: !input enable_escalating_alerts
+  escalation_threshold_1: !input escalation_threshold_1
+  escalation_level_1: !input escalation_level_1
+  escalation_threshold_2: !input escalation_threshold_2
+  escalation_level_2: !input escalation_level_2
+  temperature_sensor: !input temperature_sensor
+  temp_baseline_helper: !input temp_baseline_helper
+  enable_debug_notifications: !input enable_debug_notifications
+  enable_debug_logging: !input enable_debug_logging
+
+  # Calculate current alert level based on duration
+  current_open_minutes: >
+    {{ ((now() - states[cover_entity].last_changed).total_seconds() / 60) | int }}
+  effective_interruption_level: >
+    {% if enable_escalating_alerts %}
+      {% set minutes = ((now() - states[cover_entity].last_changed).total_seconds() / 60) | int %}
+      {% if minutes >= escalation_threshold_2 %}
+        {{ escalation_level_2 }}
+      {% elif minutes >= escalation_threshold_1 %}
+        {{ escalation_level_1 }}
+      {% else %}
+        {{ interruption_level }}
+      {% endif %}
+    {% else %}
+      {{ interruption_level }}
+    {% endif %}
+
+  # Temperature delta (current - baseline), or none if not configured
+  temp_delta: >
+    {% if temperature_sensor != '' and temp_baseline_helper != '' %}
+      {{ ((states(temperature_sensor) | float(0)) - (states(temp_baseline_helper) | float(0))) | round(1) }}
+    {% else %}
+      {{ none }}
+    {% endif %}
+
+  # Debug variables
+  debug_open_duration: >
+    {{ ((now() - states[cover_entity].last_changed).total_seconds() / 60) | round(2) }}
+  debug_interval: "{{ check_interval | int }}"
+  debug_modulo: >
+    {{ ((now() - states[cover_entity].last_changed).total_seconds() / 60) % (check_interval | int) | round(2) }}
+  debug_should_send: >
+    {{ ((now() - states[cover_entity].last_changed).total_seconds() / 60) % (check_interval | int) < 1 and ((now() - states[cover_entity].last_changed).total_seconds() / 60) >= (check_interval | int) }}
+  debug_timestamp: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  debug_cover_state: "{{ states(cover_entity) }}"
+  debug_cover_last_changed: "{{ states[cover_entity].last_changed.strftime('%Y-%m-%d %H:%M:%S') }}"
+
+trigger:
+  - trigger: state
+    entity_id: !input cover_entity
+    to: "open"
+    id: "cover_opened"
+  - trigger: state
+    entity_id: !input cover_entity
+    to: "open"
+    for:
+      minutes: !input check_interval
+    id: "cover_check"
+  - trigger: time_pattern
+    minutes: "/1"
+    id: "periodic_check"
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "CLOSE_COVER"
+    id: "close_action"
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "DO_NOTHING"
+    id: "do_nothing_action"
+  - trigger: state
+    entity_id: !input cover_entity
+    to: "open"
+    for:
+      minutes: !input auto_close_duration
+    id: "auto_close_trigger"
+  - trigger: state
+    entity_id: !input cover_entity
+    to: "closed"
+    id: "cover_closed"
+
+condition: []
+
+action:
+  # Debug logging at the start
+  - if:
+      - condition: template
+        value_template: "{{ enable_debug_logging }}"
+    then:
+      - action: system_log.write
+        data:
+          message: |
+            Cover Alert Debug - Trigger: {{ trigger.id }}
+            Cover: {{ state_attr(cover_entity, 'friendly_name') }}
+            State: {{ debug_cover_state }}
+            Last Changed: {{ debug_cover_last_changed }}
+            Open Duration: {{ debug_open_duration }} minutes
+            Check Interval: {{ debug_interval }} minutes
+            Modulo: {{ debug_modulo }}
+            Should Send: {{ debug_should_send }}
+            Effective Level: {{ effective_interruption_level }}
+            Temp Delta: {{ temp_delta if temp_delta is not none else 'N/A' }}
+            Timestamp: {{ debug_timestamp }}
+          level: info
+          logger: blueprints.cover_alert
+
+  - choose:
+      # Capture baseline temperature when the cover opens
+      - conditions:
+          - condition: trigger
+            id: "cover_opened"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ temperature_sensor != '' and temp_baseline_helper != '' }}"
+            then:
+              - action: input_number.set_value
+                target:
+                  entity_id: "{{ temp_baseline_helper }}"
+                data:
+                  value: "{{ states(temperature_sensor) | float(0) }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ enable_debug_logging }}"
+                then:
+                  - action: system_log.write
+                    data:
+                      message: "Cover Alert Debug - Captured baseline temp: {{ states(temperature_sensor) }} stored in {{ temp_baseline_helper }}"
+                      level: info
+                      logger: blueprints.cover_alert
+
+      # Handle cover closing - clear persistent notifications and optionally send confirmation
+      - conditions:
+          - condition: trigger
+            id: "cover_closed"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - action: system_log.write
+                data:
+                  message: "Cover Alert Debug - Cover closed, clearing notifications"
+                  level: info
+                  logger: blueprints.cover_alert
+
+          - repeat:
+              for_each: !input notify_device
+              sequence:
+                # Clear the persistent open alert
+                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                  data:
+                    message: "clear_notification"
+                    data:
+                      tag: "cover_open_alert"
+
+          # Optional confirmation notification
+          - if:
+              - condition: template
+                value_template: "{{ notify_on_close }}"
+            then:
+              - repeat:
+                  for_each: !input notify_device
+                  sequence:
+                    - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                      data:
+                        message: >
+                          {% if temperature_sensor != '' and temp_baseline_helper != '' %}
+                            {% set delta = (states(temperature_sensor) | float(0)) - (states(temp_baseline_helper) | float(0)) %}
+                            {{ state_attr(cover_entity, 'friendly_name') }} is now closed • Total temp change: {{ '%+.1f'|format(delta) }}°F
+                          {% else %}
+                            {{ state_attr(cover_entity, 'friendly_name') }} is now closed
+                          {% endif %}
+                        title: "Cover Closed ✅"
+                        data:
+                          tag: "cover_closed_notification"
+                          group: "cover-alerts"
+                          url: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                          clickAction: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                          push:
+                            interruption-level: "passive"
+
+                    # Debug notification for close
+                    - if:
+                        - condition: template
+                          value_template: "{{ enable_debug_notifications }}"
+                      then:
+                        - action: persistent_notification.create
+                          data:
+                            title: "🐛 Cover Closed Notification Sent"
+                            message: |
+                              **Device:** {{ device_attr(repeat.item, 'name') }}
+                              **Service:** notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}
+                              **Cover:** {{ state_attr(cover_entity, 'friendly_name') }}
+                              **Temp Delta:** {{ temp_delta if temp_delta is not none else 'N/A' }}
+                              **Time:** {{ debug_timestamp }}
+                            notification_id: "cover_alert_debug_close_{{ now().timestamp() | int }}"
+
+      # Auto-close after specified duration
+      - conditions:
+          - condition: trigger
+            id: "auto_close_trigger"
+          - condition: template
+            value_template: "{{ enable_auto_close }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - action: system_log.write
+                data:
+                  message: "Cover Alert Debug - Auto-close triggered after {{ auto_close_duration }} minutes"
+                  level: info
+                  logger: blueprints.cover_alert
+
+          - action: cover.close_cover
+            target:
+              entity_id: !input cover_entity
+
+          - wait_template: "{{ is_state(cover_entity, 'closed') }}"
+            timeout: "00:00:30"
+            continue_on_timeout: true
+
+          - repeat:
+              for_each: !input notify_device
+              sequence:
+                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                  data:
+                    message: >
+                      {% if temperature_sensor != '' and temp_baseline_helper != '' %}
+                        {% set delta = (states(temperature_sensor) | float(0)) - (states(temp_baseline_helper) | float(0)) %}
+                        {{ state_attr(cover_entity, 'friendly_name') }} was automatically closed after being open for {{ auto_close_duration }} minutes • Temp change: {{ '%+.1f'|format(delta) }}°F
+                      {% else %}
+                        {{ state_attr(cover_entity, 'friendly_name') }} was automatically closed after being open for {{ auto_close_duration }} minutes
+                      {% endif %}
+                    title: "Cover Auto-Closed 🔒"
+                    data:
+                      tag: "cover_auto_closed"
+                      group: "cover-alerts"
+                      url: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                      clickAction: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                      push:
+                        interruption-level: "active"
+
+                # Debug notification for auto-close
+                - if:
+                    - condition: template
+                      value_template: "{{ enable_debug_notifications }}"
+                  then:
+                    - action: persistent_notification.create
+                      data:
+                        title: "🐛 Auto-Close Notification Sent"
+                        message: |
+                          **Device:** {{ device_attr(repeat.item, 'name') }}
+                          **Service:** notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}
+                          **Cover:** {{ state_attr(cover_entity, 'friendly_name') }}
+                          **Duration:** {{ auto_close_duration }} minutes
+                          **Temp Delta:** {{ temp_delta if temp_delta is not none else 'N/A' }}
+                          **Time:** {{ debug_timestamp }}
+                        notification_id: "cover_alert_debug_autoclose_{{ now().timestamp() | int }}"
+
+      # Manual close from notification action
+      - conditions:
+          - condition: trigger
+            id: "close_action"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - action: system_log.write
+                data:
+                  message: "Cover Alert Debug - Manual close action triggered from notification"
+                  level: info
+                  logger: blueprints.cover_alert
+
+          - action: cover.close_cover
+            target:
+              entity_id: !input cover_entity
+
+          - wait_template: "{{ is_state(cover_entity, 'closed') }}"
+            timeout: "00:00:30"
+            continue_on_timeout: true
+
+          - if:
+              - condition: state
+                entity_id: !input cover_entity
+                state: "closed"
+            then:
+              - repeat:
+                  for_each: !input notify_device
+                  sequence:
+                    - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                      data:
+                        message: >
+                          {% if temperature_sensor != '' and temp_baseline_helper != '' %}
+                            {% set delta = (states(temperature_sensor) | float(0)) - (states(temp_baseline_helper) | float(0)) %}
+                            {{ state_attr(cover_entity, 'friendly_name') }} has been closed successfully • Temp change: {{ '%+.1f'|format(delta) }}°F
+                          {% else %}
+                            {{ state_attr(cover_entity, 'friendly_name') }} has been closed successfully
+                          {% endif %}
+                        title: "Cover Closed ✅"
+                        data:
+                          tag: "cover_closed_confirm"
+                          group: "cover-alerts"
+                          url: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                          clickAction: "{{ lovelace_view if lovelace_view != '' else omit }}"
+
+              - if:
+                  - condition: template
+                    value_template: "{{ enable_debug_logging }}"
+                then:
+                  - action: system_log.write
+                    data:
+                      message: "Cover Alert Debug - Cover closed successfully"
+                      level: info
+                      logger: blueprints.cover_alert
+            else:
+              - repeat:
+                  for_each: !input notify_device
+                  sequence:
+                    - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                      data:
+                        message: "{{ state_attr(cover_entity, 'friendly_name') }} failed to close - please check manually"
+                        title: "Cover Close Failed ⚠️"
+                        data:
+                          tag: "cover_close_failed"
+                          group: "cover-alerts"
+                          url: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                          clickAction: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                          push:
+                            interruption-level: "time-sensitive"
+
+              - if:
+                  - condition: template
+                    value_template: "{{ enable_debug_logging }}"
+                then:
+                  - action: system_log.write
+                    data:
+                      message: "Cover Alert Debug - Cover failed to close!"
+                      level: warning
+                      logger: blueprints.cover_alert
+
+      # Do nothing action (dismiss notification)
+      - conditions:
+          - condition: trigger
+            id: "do_nothing_action"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - action: system_log.write
+                data:
+                  message: "Cover Alert Debug - Do Nothing action triggered"
+                  level: info
+                  logger: blueprints.cover_alert
+
+      # Periodic notifications while cover is open
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: "cover_check"
+              - condition: trigger
+                id: "periodic_check"
+          - condition: state
+            entity_id: !input cover_entity
+            state: "open"
+          - condition: template
+            value_template: >
+              {% set open_duration = (now() - states[cover_entity].last_changed).total_seconds() / 60 %}
+              {% set interval = check_interval | int %}
+              {% set should_notify = (open_duration % interval) < 1 and open_duration >= interval %}
+              {{ should_notify }}
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ enable_debug_logging }}"
+            then:
+              - action: system_log.write
+                data:
+                  message: |
+                    Cover Alert Debug - Sending periodic notification
+                    Open Duration: {{ debug_open_duration }} minutes
+                    Interval: {{ debug_interval }} minutes
+                    Modulo: {{ debug_modulo }}
+                    Alert Level: {{ effective_interruption_level }}
+                    Temp Delta: {{ temp_delta if temp_delta is not none else 'N/A' }}
+                  level: info
+                  logger: blueprints.cover_alert
+
+          - repeat:
+              for_each: !input notify_device
+              sequence:
+                - action: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                  data:
+                    message: >
+                      {% if temperature_sensor != '' and temp_baseline_helper != '' %}
+                        {% set delta = (states(temperature_sensor) | float(0)) - (states(temp_baseline_helper) | float(0)) %}
+                        {{ state_attr(cover_entity, 'friendly_name') }} has been open for {{ relative_time(states[cover_entity].last_changed) }} • Temp: {{ '%+.1f'|format(delta) }}°F
+                      {% else %}
+                        {{ state_attr(cover_entity, 'friendly_name') }} has been open for {{ relative_time(states[cover_entity].last_changed) }}
+                      {% endif %}
+                    title: "Cover Alert"
+                    data:
+                      tag: "cover_open_alert"
+                      group: "cover-alerts"
+                      url: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                      clickAction: "{{ lovelace_view if lovelace_view != '' else omit }}"
+                      entity_id: "{{ camera_entity if camera_entity != '' else omit }}"
+                      attachment:
+                        content-type: "{{ 'jpeg' if camera_entity != '' else omit }}"
+                      push:
+                        sound: "{{ notification_sound if effective_interruption_level != 'critical' else 'default' }}"
+                        interruption-level: "{{ effective_interruption_level }}"
+                      actions:
+                        - action: "CLOSE_COVER"
+                          title: "Close Cover"
+                        - action: "DO_NOTHING"
+                          title: "Do Nothing"
+
+                # Debug persistent notification
+                - if:
+                    - condition: template
+                      value_template: "{{ enable_debug_notifications }}"
+                  then:
+                    - action: persistent_notification.create
+                      data:
+                        title: "🐛 Cover Alert Notification Sent"
+                        message: |
+                          **Device:** {{ device_attr(repeat.item, 'name') }}
+                          **Service:** notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}
+                          **Cover:** {{ state_attr(cover_entity, 'friendly_name') }}
+                          **State:** {{ debug_cover_state }}
+                          **Open Duration:** {{ debug_open_duration }} minutes
+                          **Check Interval:** {{ debug_interval }} minutes
+                          **Modulo:** {{ debug_modulo }}
+                          **Should Send:** {{ debug_should_send }}
+                          **Alert Level:** {{ effective_interruption_level }}
+                          **Temp Delta:** {{ temp_delta if temp_delta is not none else 'N/A' }}
+                          **Lovelace Path:** {{ lovelace_view if lovelace_view != '' else 'Not set' }}
+                          **Camera:** {{ camera_entity if camera_entity != '' else 'Not set' }}
+                          **Time:** {{ debug_timestamp }}
+                        notification_id: "cover_alert_debug_{{ now().timestamp() | int }}"
+
+mode: restart

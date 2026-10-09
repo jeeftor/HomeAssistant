@@ -1,0 +1,105 @@
+---
+blueprint:
+  name: AWTRIX ASD20 - Cal 📅️
+  description: >
+    Monitors the state of a calendars and sets the indicator based on the status of events
+
+    ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/annotated_calendar.png)
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
+          multiple: true
+    calendar:
+      name: Calendar
+      selector:
+        entity:
+          filter:
+            domain: calendar
+
+mode: queued
+variables:
+  calendar: !input calendar
+  cal_state: "{{states(calendar)}}"
+
+  device_ids: !input awtrix
+  devices_topics: >-
+    {%- macro get_device_topic(device_id) %}
+    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+    {%- endmacro %}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device_topic(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/wres' ~ light_suffix] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list}}
+
+trigger:
+  - platform: time_pattern
+    hours: /1 # Change this hard
+    # seconds: /30
+    id: temporal
+
+action:
+  - service: calendar.get_events
+    data:
+      start_date_time: "{{now().strftime('%Y-%m-%d')}}"
+      end_date_time: "{{ (now() + timedelta(days=2)).strftime('%Y-%m-%d') }}"
+    target:
+      entity_id: "{{ calendar }}"
+    response_variable: cal_events
+  - variables:
+      events: "{{ cal_events[calendar]['events'] }}"
+      next_event: >
+        {% set event = events | selectattr('start', 'defined') | sort(attribute='start') | first | default({}) %}
+        {{ event if event else {} }}
+      next_event_desc: "{{ next_event.summary | default('') }}"
+      next_event_start: "{{ next_event.start | default('') }}"
+      next_event_day: >
+        {% if next_event_start %}
+          {{ next_event_start | as_datetime | strftime('%a') }}
+        {% else %}
+          ''
+        {% endif %}
+      days_until: >
+        {% if next_event_start %}
+          {{ ((as_timestamp(next_event_start) - as_timestamp(now())) / 86400) | round(0) }}
+        {% else %}
+          5
+        {% endif %}
+      next_event_text: >-
+        { "repeat": 2,
+          "text": [
+            {
+              "t": "{{next_event_day}}",
+              "c": "f542ef"
+            },
+            {
+              "t": "{{next_event_desc}}",
+              "c": "42f56f"
+            }
+          ]
+        }
+      payload: >
+        {%- if days_until > 3 %}
+          {}
+        {%- else -%}
+          {{next_event_text}}
+        {%- endif -%}
+  - repeat:
+      for_each: "{{devices_topics}}"
+      sequence:
+        - service: mqtt.publish
+          data:
+            qos: 0
+            topic: "{{repeat.item}}"
+            payload: >-
+              {{payload}}

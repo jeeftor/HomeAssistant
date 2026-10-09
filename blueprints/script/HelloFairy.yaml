@@ -1,0 +1,53 @@
+mode: single
+blueprint:
+  name: Number Cycle Script with Switch and Text Sequence (For Each with Delay - Required)
+  description: |
+    Turns on the switch, then cycles through a customizable sequence (entered as a comma-separated list, e.g., 1,2,3,4).
+    For each number: sets the number entity to the current value and waits 1 minute.
+    Turns off the switch when done. All inputs are required.
+  domain: script
+  input:
+    trigger_switch:
+      name: Trigger Switch
+      description: Switch to turn on before cycling and off after. Must be "on" to proceed.
+      selector:
+        entity:
+          filter:
+            - integration: esphome
+              domain:
+                - switch
+    scene_selector:
+      name: Scene Selector Number
+      description: input_number entity to set to the current current value during cycle.
+      selector:
+        entity:
+          filter:
+            - domain: number
+              integration: esphome
+    sequence:
+      name: Sequence of Numbers
+      description: Comma-separated list of numbers defining the cycle sequence (e.g., 1,2,3,4).
+      default: "7,8,10,11,12,9"
+      selector:
+        text:
+variables:
+  sequence: !input sequence
+  sequence_list: "{{ sequence.split(',') | map('trim') | map('int') | list }}"
+
+sequence:
+  - action: switch.turn_on
+    target:
+      entity_id: !input trigger_switch
+  - delay: "00:00:00" # Optional brief delay after turning on switch
+  - repeat:
+      for_each: "{{ sequence_list }}"
+      sequence:
+        - action: number.set_value
+          target:
+            entity_id: !input scene_selector
+          data:
+            value: "{{ repeat.item }}"
+        - delay: "00:00:50" # Sleep 1 minute after setting the value
+  - action: switch.turn_off
+    target:
+      entity_id: !input trigger_switch

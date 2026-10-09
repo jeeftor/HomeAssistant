@@ -1,0 +1,94 @@
+blueprint:
+  name: Camspeak Preset on Arrival
+  description: 'Play a camspeak audio preset on a camera speaker when a device tracker
+    arrives home within a specified time window.
+
+    '
+  domain: automation
+  author: jstein
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    tracker:
+      name: Device Tracker
+      description: The person/device tracker to watch for arrival home.
+      selector:
+        entity:
+          domain:
+          - device_tracker
+          multiple: false
+          reorder: false
+    camera_speaker:
+      name: Camspeak Speaker
+      description: The camspeak media_player entity to play the preset on.
+      selector:
+        entity:
+          integration: camspeak
+          domain:
+          - media_player
+          multiple: false
+          reorder: false
+    preset:
+      name: Preset
+      description: Pick a preset from the camspeak media library.
+      selector:
+        media:
+          multiple: false
+    start_time:
+      name: Start Time
+      description: Beginning of the active time window.
+      selector:
+        time: {}
+    end_time:
+      name: End Time
+      description: End of the active time window.
+      selector:
+        time: {}
+    weekdays:
+      name: Days of Week
+      description: Which days the automation is active.
+      default:
+      - mon
+      - tue
+      - wed
+      - thu
+      - fri
+      selector:
+        select:
+          multiple: true
+          options:
+          - label: Monday
+            value: mon
+          - label: Tuesday
+            value: tue
+          - label: Wednesday
+            value: wed
+          - label: Thursday
+            value: thu
+          - label: Friday
+            value: fri
+          - label: Saturday
+            value: sat
+          - label: Sunday
+            value: sun
+          sort: false
+          custom_value: false
+  source_url: https://kb.vookie.net/owqg5wsloqai/camspeak_preset_arrival.yaml
+mode: single
+triggers:
+- trigger: state
+  entity_id: !input tracker
+  from: not_home
+  to: home
+conditions:
+- condition: time
+  after: !input start_time
+  before: !input end_time
+  weekday: !input weekdays
+actions:
+- action: media_player.play_media
+  target:
+    entity_id: !input camera_speaker
+  data:
+    media_content_id: !input preset
+    media_content_type: music

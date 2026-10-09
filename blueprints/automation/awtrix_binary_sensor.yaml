@@ -42,7 +42,7 @@ blueprint:
       selector:
         entity:
           filter:
-            domain: 
+            domain:
               - binary_sensor
               - input_boolean
 

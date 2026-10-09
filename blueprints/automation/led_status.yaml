@@ -1,0 +1,271 @@
+---
+blueprint:
+  name: Status 🚥️ Light - Sensor Monitor
+  description: >
+    This blueprint is designed to monitor 1-2 sensors and toggle a light based on the statuses
+
+  domain: automation
+  input:
+    lights:
+      name: Status Light(s)
+      description: Select the lights to show status
+      selector:
+        entity:
+          domain: light
+          multiple: true
+
+    trigger_sensor_1:
+      name: Sensor 1
+      description: Binary sensor to track status of something like a door or
+      selector:
+        entity:
+          domain:
+            - binary_sensor
+            - cover
+            - lock
+            - input_boolean
+
+    # trigger_sensor_2:
+    #   name: Sensor 2 (optional)
+    #   description: A secondary sensor (like a lock) that you want to pair with the first sensor
+    #   selector:
+    #     entity:
+    #       domain:
+    #         - binary_sensor
+    #         - cover
+    #         - lock
+    #         - input_boolean
+    # use_sensor_2:
+    #   name: Use the second sensor
+    #   description: Main use case is if sensor 2 is a lock
+    #   selector:
+    #     boolean:
+    #   default: false
+    on_color_1:
+      name: Sensor 1 engaged color (Sensor 2 off)
+      description: >-
+        This is the color if the first Sensor is engaged. Say you have a motion sensor and it detects motion. Or if a door is open
+      selector:
+        color_rgb:
+      default: [255, 0, 0]
+    error_color_1:
+      name: Sensor 1 Error Color
+      description: >-
+        This will usually show if the entity in Sensor 1 is not available
+      selector:
+        color_rgb:
+      default: [255, 0, 255]
+
+    off_color_1:
+      name: Sensor 1 disengaged
+      description: >-
+        This is the color if the first Sensor is engaged. Say you have a motion sensor and it detects motion. Or if a door is open
+      selector:
+        color_rgb:
+      default: [0, 0, 0]
+
+mode: queued
+max: 10
+
+variables:
+  lights: !input lights
+  sensor_1: !input trigger_sensor_1
+  # sensor_2: !input trigger_sensor_2
+
+  # qt_start: !input quiet_time_start
+  # qt_end: !input quiet_time_end
+  # mute: "{{ iif(qt_start > qt_end, not (today_at(qt_end) < now() < today_at(qt_start)),today_at(qt_start) < now() < today_at(qt_end)) }}"
+  # device_ids: !input awtrix
+  # app_topic: !input app_name
+  # message_topics: >-
+  #   {%- macro get_device_topic(device_id) %}
+  #   {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+  #   {%- endmacro %}
+
+  #   {%- set ns = namespace(devices=[]) %}
+  #   {%- for device_id in device_ids %}
+  #     {%- set device=get_device_topic(device_id)|replace(' ','') %}
+  #     {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ 'jeef_' ~ app_topic] %}
+  #   {%- endfor %}
+  #   {{ ns.devices | reject('match','unavailable') | list}}
+  # notification_topics: >-
+  #   {%- macro get_device_topic(device_id) %}
+  #   {{ states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
+  #   {%- endmacro %}
+
+  #   {%- set ns = namespace(devices=[]) %}
+  #   {%- for device_id in device_ids %}
+  #     {%- set device=get_device_topic(device_id)|replace(' ','') %}
+  #     {% set ns.devices = ns.devices + [ device ~ '/notify'] %}
+  #   {%- endfor %}
+  #   {{ ns.devices | reject('match','unavailable') | list}}
+  # trigger_sensor: !input trigger_sensor
+  # last_change_seconds: "{{ as_timestamp(now()) - as_timestamp(states[trigger_sensor].last_changed | default(0)) }}"
+  # last_changed_str: "{{relative_time(states[trigger_sensor].last_changed
+  #   | default(0))
+  #   | replace('hours','hr')
+  #   | replace('hour','hr')
+  #   | replace('seconds','sec')
+  #   | replace('minutes','min')
+  #   | replace('minute','min')}}"
+
+  # icon_set: !input icon_set
+  # custom_open_icon: !input custom_open_icon
+  # custom_is_open_icon: !input custom_is_open_icon
+  # custom_close_icon: !input custom_close_icon
+  # custom_error_icon: !input custom_error_icon
+
+  # # Open icon
+
+  # open_icon: "{{iif(icon_set == 'custom', custom_open_icon ,icon_set ~ '_open')}}"
+  # open_text: !input open_text
+  # open_sound: !input open_sound
+
+  # is_open_icon: "{{iif(icon_set == 'custom', custom_is_open_icon ,icon_set ~ '_is_open')}}"
+  # is_open_text: !input is_open_text
+  # # If we have open text then add it and a space to the end of the last_changed_str message
+  # is_open_message: "{{iif(open_text,last_changed_str,[last_changed_str,open_text]|join(' '))}}"
+
+  # close_icon: "{{iif(icon_set == 'custom', custom_close_icon ,icon_set ~ '_close')}}"
+  # close_text: !input close_text
+  # close_sound: !input close_sound
+
+  # error_icon: "{{iif(icon_set == 'custom', custom_error_icon ,icon_set ~ '_error')}}"
+  # error_text: !input error_text
+  # error_sound: !input error_sound
+
+  # open_payload: >-
+  #   {"text":"{{open_text}}", "icon":"{{open_icon}}", "rtttl":"{{iif(mute,'',open_sound)}}"}
+  # close_payload: >-
+  #   {"text":"{{close_text}}", "icon":"{{close_icon}}", "rtttl":"{{iif(mute,'',close_sound)}}"}
+  # is_open_payload: >-
+  #   {"text": "{{is_open_message}}", "icon":"{{is_open_icon}}"}
+  # error_message_payload: >-
+  #   {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00"}
+  # error_alert_payload: >-
+  #   {"text": "{{error_text}}", "icon":"{{error_icon}}", "color":"#FFFF00", "rtttl":"{{iif(mute,'',error_sound)}}"}
+
+trigger_variables:
+  sensor1: !input trigger_sensor_1
+  # sensor2: !input trigger_sensor_2
+  on_state: "{{['on','open','unlocked']}}"
+  to_on_state: "{{['unlocking','opening']}}"
+  to_off_state: "{{['locking','closing']}}"
+  off_state: "{{['off','closed','locked']}}"
+  non_error_states: "{{ on_state + to_on_state + to_off_state + off_state }}"
+
+trigger:
+  # - platform: time_pattern
+  #   minutes: /1
+  #   id: time
+  - platform: template
+    id: "on"
+    value_template: "{{ states(trigger_sensor_1) in on_state }}"
+  - platform: template
+    id: "to_on"
+    value_template: "{{ states(trigger_sensor_1) in to_on_state }}"
+  - platform: template
+    value_template: "{{ states(trigger_sensor_1) in off_state }}"
+    id: "off"
+  - platform: template
+    value_template: "{{ states(trigger_sensor_1) in to_off_state }}"
+    id: "to_off"
+  - platform: template
+    value_template: "{{ states(trigger_sensor_1) not in non_error_states }}"
+    id: error
+
+condition: []
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: to_off
+        sequence: []
+
+  # - choose:
+  #     # Time update and door is still open
+  #     - conditions:
+  #         - and:
+  #             - condition: trigger
+  #               id: time
+  #             - condition: template
+  #               value_template: "{{ states(trigger_sensor) in ['on', 'open'] }}"
+  #             - condition: template
+  #               value_template: "{{ last_change_seconds > 60 }}"
+
+  #       sequence:
+  #         - repeat:
+  #             for_each: "{{ message_topics }}"
+  #             sequence:
+  #               - service: mqtt.publish
+  #                 data:
+  #                   qos: 0
+  #                   retain: false
+  #                   topic: "{{ repeat.item }}"
+  #                   payload: "{{is_open_payload}}"
+
+  #     # Door open logic (Notification + message)
+  #     - conditions:
+  #         - condition: trigger
+  #           id: opened
+  #       sequence:
+  #         - repeat:
+  #             for_each: "{{ notification_topics }}"
+  #             sequence:
+  #               - service: mqtt.publish
+  #                 data:
+  #                   qos: 0
+  #                   retain: false
+  #                   topic: "{{ repeat.item }}"
+  #                   payload: >
+  #                     {{open_payload}}
+  #     # Door Close Logic
+  #     - conditions:
+  #         - condition: trigger
+  #           id: closed
+  #       sequence:
+  #         - repeat:
+  #             for_each: "{{ notification_topics }}"
+  #             sequence:
+  #               - service: mqtt.publish
+  #                 data:
+  #                   qos: 0
+  #                   retain: false
+  #                   topic: "{{ repeat.item }}"
+  #                   payload: >
+  #                     {{close_payload}}
+  #         - repeat:
+  #             for_each: "{{ message_topics }}"
+  #             sequence:
+  #               - service: mqtt.publish
+  #                 data:
+  #                   qos: 0
+  #                   retain: false
+  #                   topic: "{{ repeat.item }}"
+  #                   payload: "{}"
+
+  #     # Door error status
+  #     - conditions:
+  #         - condition: trigger
+  #           id: error
+  #       sequence:
+  #         - repeat:
+  #             for_each: "{{ notification_topics }}"
+  #             sequence:
+  #               - service: mqtt.publish
+  #                 data:
+  #                   qos: 0
+  #                   retain: false
+  #                   topic: "{{ repeat.item }}"
+  #                   payload: >
+  #                     {{error_alert_payload}}
+  #         - repeat:
+  #             for_each: "{{ message_topics }}"
+  #             sequence:
+  #               - service: mqtt.publish
+  #                 data:
+  #                   qos: 0
+  #                   retain: false
+  #                   topic: "{{ repeat.item }}"
+  #                   payload: >
+  #                     {{error_alert_payload}}

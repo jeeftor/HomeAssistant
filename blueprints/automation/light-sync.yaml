@@ -1,0 +1,94 @@
+blueprint:
+  name: Inovelli Light Sync
+  domain: automation
+  description: This blueprint will try to sync values across some lights
+  input:
+    source_light:
+      name: Source Light
+      description: zwave_js supported Inovelli lights will show up here
+      selector:
+        device:
+          integration: zwave_js
+          entity:
+            domain: light
+    target_light:
+      name: Target Light
+      description: Some light device
+      selector:
+        device:
+          entity:
+            domain: light
+    source_min_brightness:
+      name: Minimum brightness of source light
+      description: If for some reason you don't dim to 0% we need to know
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 99
+          unit_of_measurement: percent
+mode: restart
+
+trigger:
+  - platform: device
+    device_id: !input source_light
+    domain: zwave_js
+    type: event.value_notification.central_scene
+    property: scene
+    property_key: "001"
+    endpoint: 0
+    command_class: 91
+    subtype: Endpoint 0 Scene 001
+    value: 2
+    alias: Hold Down button
+    id: down
+  - platform: device
+    device_id: !input source_light
+    domain: zwave_js
+    type: event.value_notification.central_scene
+    property: scene
+    property_key: "002"
+    endpoint: 0
+    command_class: 91
+    subtype: Endpoint 0 Scene 002
+    value: 2
+    alias: Hold Up Button
+    id: up
+  - platform: device
+    device_id: !input source_light
+    domain: zwave_js
+    type: zwave_js.value_updated.value
+    command_class: 38
+    property: currentValue
+    id: brightness
+condition: []
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: up
+        sequence:
+          - service: light.turn_on
+            data:
+              brightness: "{{ (state_attr('light.piano_light','brightness') or 1) + 10 }}"
+            target:
+              entity_id: light.piano_light
+      - conditions:
+          - condition: trigger
+            id: down
+        sequence:
+          - service: light.turn_on
+            data:
+              brightness: "{{ (state_attr('light.piano_light','brightness') or 1) - 10 }}"
+            target:
+              entity_id: light.piano_light
+      - conditions:
+          - condition: trigger
+            id: release
+        sequence:
+          - service: light.turn_on
+            data:
+              brightness: "{{ state_attr('light.red_series_dimmer','brightness') }}"
+            alias: Sync Brightness
+            target:
+              entity_id: light.piano_light

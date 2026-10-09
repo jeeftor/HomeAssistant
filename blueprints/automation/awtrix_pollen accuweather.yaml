@@ -1,8 +1,8 @@
 ---
 blueprint:
-  name: AWTRIX Pollen 🥀️
+  name: AWTRIX Pollen 🥀️ (Accuweather)
   description: >
-    This blueprint will show current & forecasted IQAir Pollen readings
+    This blueprint will show current & forecasted Pollen readings from Accuweather
 
     ![](https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/resources/pollenPreview.gif)
 
@@ -23,62 +23,7 @@ blueprint:
 
     ### Requirements
 
-    - [HACS Multiscraper](https://github.com/danieldotnl/ha-multiscrape)
-
-      Once you've installed multi-scrape you will need to conifugre a scrap sensor:
-
-
-
-          multiscrape:
-            # Debug with: https://try.jsoup.org/
-            - name: IQAir Pollen
-              scan_interval: 600
-              resource: https://www.iqair.com/pollen/usa/chicago
-              log_response: true
-              sensor:
-                - unique_id: pollen
-                  select: ".pollen__header__global-index"
-                  attributes:
-                    - name: Raw data
-                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                    - name: Current Tree
-                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                      value_template: "{{value.split(',')[1]}}"
-                    - name: Current Grass
-                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                      value_template: "{{value.split(',')[3]}}"
-                    - name: Current Weed
-                      select_list: ".pollen__content__table tr td:nth-child(2),.pollen__content__table tr td:nth-child(3)"
-                      value_template: "{{value.split(',')[5]}}"
-                    - name: Forecast today Overall
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                      value_template: "{{ value.split(',')[1] }}"
-                    - name: Forecast today Tree
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                      value_template: "{{ value.split(',')[2] }}"
-                    - name: Forecast today Grass
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                      value_template: "{{ value.split(',')[3] }}"
-                    - name: Forecast today Weed
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(1) td"
-                      value_template: "{{ value.split(',')[4] }}"
-
-                    - name: Forecast tomorrow Overall
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                      value_template: "{{ value.split(',')[2] }}"
-                    - name: Forecast tomorrow Tree
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                      value_template: "{{ value.split(',')[3] }}"
-                    - name: Forecast tomorrow Grass
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                      value_template: "{{ value.split(',')[4] }}"
-                    - name: Forecast tomorrow Weed
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                      value_template: "{{ value.split(',')[5] }}"
-
-                    - name: Raw forecast
-                      select_list: ".pollen-forecast__table tbody tr:nth-child(2) td"
-                      value_template: "{{ value.split(',')[2:6] }}"
+    You must have the [AccuWeather](https://www.home-assistant.io/integrations/accuweather/) integration installed. As well as you will need to enable Tree/Grass/Ragweed sensors 0 & 1
 
   domain: automation
   input:
@@ -94,14 +39,22 @@ blueprint:
           multiple: true
 
     pollen_sensor:
-      name: IQAir Pollen Scrape Sensor
-      description: >-
-        This is the custom pollen scraping sensor you've developed...
+      name: Accuweather Integration
+      description: Sensor name is likely `Tree pollen day 0`
       selector:
-        entity:
-          domain:
-            filter:
-              - sensor
+        device:
+          filter:
+            integration: accuweather
+
+    # pollen_sensor:
+    #   name: IQAir Pollen Scrape Sensor
+    #   description: >-
+    #     This is the custom pollen scraping sensor you've developed...
+    #   selector:
+    #     entity:
+    #       domain:
+    #         filter:
+    #           - sensor
 
     app_name:
       name: Awtrix Applicaiton name
@@ -125,50 +78,72 @@ variables:
       {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ 'jeef_' ~ app_topic] %}
     {%- endfor %}
     {{ ns.devices | reject('match','unavailable') | list}}
+  pollen_device_id: !input pollen_sensor
+  entity_prefix: "{{((device_entities(pollen_device_id)| select('match', '^weather') | list)[0]).split('.')[1]}}"
 
-  # Generate history stuff
-  pollen_sensor: !input pollen_sensor
+  current_tree: "{{state_attr('sensor.' ~ entity_prefix ~ '_tree_pollen_day_1','level')}}"
+  current_tree_color: '{{current_tree | replace("hazardous", "#8860D0") | replace("unhealthy", "#A569BD") | replace("high", "#F65E5F") | replace("moderate", "#F99049") | replace("low", "#9CD84E") | replace("good", "#9CD84E") | replace("None", "#D0D5DD") }}'
+  current_tree_index: '{{ current_tree | replace("hazardous", 4) | replace("unhealthy" , 4) |replace("high", 3) |replace("moderate", 2) |replace("low", 1) | replace("good", 0) | replace("none", 0)}}'
 
-  current_pollen: "{{states(pollen_sensor)}}"
-  current_weed: "{{ state_attr(pollen_sensor,'current_weed') }}"
-  current_tree: "{{ state_attr(pollen_sensor,'current_tree') }}"
-  current_grass: " {{ state_attr(pollen_sensor,'current_grass') }}"
-  current_pollen_color: '{{ current_pollen | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
-  current_pollen_color_rgb565: >-
-    {%- macro hex_to_rgb565(hex_color) %}
-    {%- set red = hex_color[1:3] | int(base=16) %}
-    {%- set green = hex_color[3:5] | int(base=16) %}
-    {%- set blue = hex_color[5:7] | int(base=16) %}
+  current_grass: "{{state_attr('sensor.' ~ entity_prefix ~ '_grass_pollen_day_1','level')}}"
+  current_grass_color: '{{current_grass | replace("hazardous", "#8860D0") | replace("unhealthy", "#A569BD") | replace("high", "#F65E5F") | replace("moderate", "#F99049") | replace("low", "#9CD84E") | replace("good", "#9CD84E") | replace("None", "#D0D5DD") }}'
+  current_grass_index: '{{ current_grass | replace("hazardous", 4) | replace("unhealthy" , 4) |replace("high", 3) |replace("moderate", 2) |replace("low", 1) | replace("good", 0) | replace("none", 0)}}'
 
-    {%- set shift_red = red // 8 %}
-    {%- set shift_green = green // 8 %}
-    {%- set shift_blue = blue // 8 %}
+  current_weed: "{{state_attr('sensor.' ~ entity_prefix ~ '_ragweed_pollen_day_1','level')}}"
+  current_weed_color: '{{current_weed | replace("hazardous", "#8860D0") | replace("unhealthy", "#A569BD") | replace("high", "#F65E5F") | replace("moderate", "#F99049") | replace("low", "#9CD84E") | replace("good", "#9CD84E") | replace("None", "#D0D5DD") }}'
+  current_weed_index: '{{ current_weed | replace("hazardous", 4) | replace("unhealthy" , 4) |replace("high", 3) |replace("moderate", 2) |replace("low", 1) | replace("good", 0) | replace("none", 0)}}'
 
-    {%- set rgb888 = shift_red * 2048 + shift_green * 32 + shift_blue %}
-    {{ rgb888 }}
-    {%- endmacro %}
-    {{ hex_to_rgb565(current_pollen_color)}}
+  forecast_tree: "{{state_attr('sensor.' ~ entity_prefix ~ '_tree_pollen_day_2','level')}}"
+  forecast_tree_color: '{{forecast_tree | replace("hazardous", "#8860D0") | replace("unhealthy", "#A569BD") | replace("high", "#F65E5F") | replace("moderate", "#F99049") | replace("low", "#9CD84E") | replace("good", "#9CD84E") | replace("None", "#D0D5DD") }}'
+  forecast_tree_index: '{{ forecast_tree | replace("hazardous", 4) | replace("unhealthy" , 4) |replace("high", 3) |replace("moderate", 2) |replace("low", 1) | replace("good", 0) | replace("none", 0)}}'
 
-  current_weed_color: '{{ current_weed | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
-  current_tree_color: '{{ current_tree | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
-  current_grass_color: '{{ current_grass | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  forecast_grass: "{{state_attr('sensor.' ~ entity_prefix ~ '_grass_pollen_day_2','level')}}"
+  forecast_grass_color: '{{forecast_grass | replace("hazardous", "#8860D0") | replace("unhealthy", "#A569BD") | replace("high", "#F65E5F") | replace("moderate", "#F99049") | replace("low", "#9CD84E") | replace("good", "#9CD84E") | replace("None", "#D0D5DD") }}'
+  forecast_grass_index: '{{ forecast_grass | replace("hazardous", 4) | replace("unhealthy" , 4) |replace("high", 3) |replace("moderate", 2) |replace("low", 1) | replace("good", 0) | replace("none", 0)}}'
 
-  current_index: '{{ current_pollen | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+  forecast_weed: "{{state_attr('sensor.' ~ entity_prefix ~ '_ragweed_pollen_day_2','level')}}"
+  forecast_weed_color: '{{forecast_weed | replace("hazardous", "#8860D0") | replace("unhealthy", "#A569BD") | replace("high", "#F65E5F") | replace("moderate", "#F99049") | replace("low", "#9CD84E") | replace("good", "#9CD84E") | replace("None", "#D0D5DD") }}'
+  forecast_weed_index:
+    '{{ forecast_weed | replace("hazardous", 4) | replace("unhealthy" , 4) |replace("high", 3) |replace("moderate", 2) |replace("low", 1) | replace("good", 0) | replace("none", 0)}}'
 
-  current_weed_index: '{{ current_weed | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
-  current_tree_index: '{{ current_tree | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
-  current_grass_index: '{{ current_grass | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+    # # (low, high, good, moderate, unhealthy, hazardous
+    # current_pollen_color: '{{ current_pollen | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  # current_pollen_color: '{{ current_pollen | replace("hazardous", "#8860D0") | replace("unhealthy", "#A569BD") | replace("high", "#F65E5F") | replace("moderate", "#F99049") | replace("low", "#9CD84E") | replace("good", "#9CD84E") | replace("None", "#D0D5DD") }}'
+  # current_pollen_color_rgb565: >-
+  #   {%- macro hex_to_rgb565(hex_color) %}
+  #   {%- set red = hex_color[1:3] | int(base=16) %}
+  #   {%- set green = hex_color[3:5] | int(base=16) %}
+  #   {%- set blue = hex_color[5:7] | int(base=16) %}
 
-  forecast_pollen: "{{state_attr(pollen_sensor, 'forecast_tomorrow_overall')}}"
-  forecast_weed: "{{ state_attr(pollen_sensor,'forecast_tomorrow_weed') }}"
-  forecast_tree: "{{ state_attr(pollen_sensor,'forecast_tomorrow_tree') }}"
-  forecast_grass: " {{ state_attr(pollen_sensor,'forecast_tomorrow_grass') }}"
-  forecast_pollen_color: '{{ forecast_pollen | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
-  forecast_weed_color: '{{ forecast_weed | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
-  forecast_tree_color: '{{ forecast_tree | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
-  forecast_grass_color: '{{ forecast_grass | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  #   {%- set shift_red = red // 8 %}
+  #   {%- set shift_green = green // 8 %}
+  #   {%- set shift_blue = blue // 8 %}
 
-  lines: >-
+  #   {%- set rgb888 = shift_red * 2048 + shift_green * 32 + shift_blue %}
+  #   {{ rgb888 }}
+  #   {%- endmacro %}
+  #   {{ hex_to_rgb565(current_pollen_color)}}
+
+  # current_weed_color: '{{ current_weed | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  # current_tree_color: '{{ current_tree | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  # current_grass_color: '{{ current_grass | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+
+  # current_index: '{{ current_pollen | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+
+  # current_weed_index: '{{ current_weed | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+  # current_tree_index: '{{ current_tree | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+  # current_grass_index: '{{ current_grass | replace("Very High", 4) | replace("High" , 3) |replace("Moderate", 2) |replace("Low", 1) | replace("None", 0)}}'
+
+  # forecast_pollen: "{{state_attr(pollen_sensor, 'forecast_tomorrow_overall')}}"
+  # forecast_weed: "{{ state_attr(pollen_sensor,'forecast_tomorrow_weed') }}"
+  # forecast_tree: "{{ state_attr(pollen_sensor,'forecast_tomorrow_tree') }}"
+  # forecast_grass: " {{ state_attr(pollen_sensor,'forecast_tomorrow_grass') }}"
+  # forecast_pollen_color: '{{ forecast_pollen | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  # forecast_weed_color: '{{ forecast_weed | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  # forecast_tree_color: '{{ forecast_tree | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+  # forecast_grass_color: '{{ forecast_grass | replace("Very High", "#F65E5F") | replace("High" , "#F99049") |replace("Moderate", "#FACF39") |replace("Low", "#9CD84E") | replace("None", "#D0D5DD")}}'
+
+  # lines: >-
 
   grass_sprite: >-
     {%-  macro icon_grass_0(x,y) %}
@@ -190,8 +165,6 @@ variables:
     {%-  macro icon_grass_4(x,y) %}
     {"db": [{{x}}, {{y}}, 5, 6, [0, 16050828, 0, 0, 16050828, 0, 0, 0, 0, 0, 16050828, 0, 16050828, 0, 0, 0, 9240076, 0, 2402836, 0, 0, 2402836, 0, 9240076, 0, 2402836, 2402836, 9240076, 2402836, 2402836]]}
     {%- endmacro %}
-
-
 
     {%- set x = 23 %}
     {%- set y = 0 %}
@@ -269,8 +242,6 @@ variables:
     {"db": [{{x}}, {{y}}, 6, 6, [0, 16050828, 2402836, 2402836, 0, 0, 2402836, 2402836, 2402836, 16050828, 2402836, 16050828, 2402836, 2402836, 2402836, 2402836, 2402836, 0, 0, 2402836, 16050828, 2402836, 0, 0, 0, 0, 8673828, 0, 16050828, 0, 16050828, 0, 8673828, 16050828, 0, 0]]}
     {%- endmacro %}
 
-
-
     {%- set x = 11 %}
     {%- set y = 0 %}
     {%- if current_tree_index == 0 -%}
@@ -288,46 +259,44 @@ variables:
     {"dl": [11,6,15,6,"{{current_tree_color}}"]},
     {"dl": [11,7,15,7,"{{forecast_tree_color}}"]}
 
-  flower_sprite: >-
+  # flower_sprite: >-
 
-    {%-  macro icon_flower_0(x,y) %}
-    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 0, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 0, 0, 1946145]]}
-    {%- endmacro %}
+  #   {%-  macro icon_flower_0(x,y) %}
+  #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 0, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 0, 0, 1946145]]}
+  #   {%- endmacro %}
 
-    {%-  macro icon_flower_1(x,y) %}
-    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 0, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 0, 0, 16050828, 0, 0, 1946145, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 0, 0, 1946145]]}
-    {%- endmacro %}
+  #   {%-  macro icon_flower_1(x,y) %}
+  #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 0, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 0, 0, 16050828, 0, 0, 1946145, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 0, 0, 1946145]]}
+  #   {%- endmacro %}
 
-    {%-  macro icon_flower_2(x,y) %}
-    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 0, 0, 16777215, 16776960, 16777215, 0, 0, 16050828, 0, 16777215, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 16050828, 0, 0, 1946145, 0, 0, 0, 0, 0, 1946145]]}
-    {%- endmacro %}
+  #   {%-  macro icon_flower_2(x,y) %}
+  #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 0, 0, 16777215, 16776960, 16777215, 0, 0, 16050828, 0, 16777215, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 0, 16050828, 0, 0, 1946145, 0, 0, 0, 0, 0, 1946145]]}
+  #   {%- endmacro %}
 
-    {%-  macro icon_flower_3(x,y) %}
-    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 16050828, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 0, 0, 16050828, 0, 0, 1946145, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 16050828, 0, 0, 1946145]]}
-    {%- endmacro %}
+  #   {%-  macro icon_flower_3(x,y) %}
+  #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 16050828, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 0, 0, 16050828, 0, 0, 1946145, 0, 0, 0, 0, 0, 0, 1946145, 0, 0, 16050828, 0, 0, 1946145]]}
+  #   {%- endmacro %}
 
-    {%-  macro icon_flower_4(x,y) %}
-    {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 16050828, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 16050828, 0, 16050828, 0, 0, 1946145, 0, 16050828, 0, 0, 0, 0, 1946145, 0, 0, 16050828, 0, 0, 1946145]]}
-    {%- endmacro %}
+  #   {%-  macro icon_flower_4(x,y) %}
+  #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 16777215, 0, 0, 16050828, 0, 16777215, 16776960, 16777215, 0, 0, 0, 0, 16777215, 0, 16050828, 0, 16050828, 0, 0, 1946145, 0, 16050828, 0, 0, 0, 0, 1946145, 0, 0, 16050828, 0, 0, 1946145]]}
+  #   {%- endmacro %}
 
+  #   {%- set x = 1 %}
+  #   {%- set y = 1 %}
+  #   {%- if current_index == 0 -%}
+  #   {{icon_flower_0(x,y)}},
+  #   {%- elif current_index == 1 -%}
+  #   {{icon_flower_1(x,y)}},
+  #   {%- elif current_index == 2 -%}
+  #   {{icon_flower_2(x,y)}},
+  #   {%- elif current_index == 3 -%}
+  #   {{icon_flower_3(x,y)}},
+  #   {%- elif current_index == 4 -%}
+  #   {{icon_flower_4(x,y)}},
+  #   {%- endif %}
+  #   {"dr": [0,0,8,8,"{{current_pollen_color}}"]},
+  #   {"dl": [8,0,8,7,"{{forecast_pollen_color}}"]}
 
-
-
-    {%- set x = 1 %}
-    {%- set y = 1 %}
-    {%- if current_index == 0 -%}
-    {{icon_flower_0(x,y)}},
-    {%- elif current_index == 1 -%}
-    {{icon_flower_1(x,y)}},
-    {%- elif current_index == 2 -%}
-    {{icon_flower_2(x,y)}},
-    {%- elif current_index == 3 -%}
-    {{icon_flower_3(x,y)}},
-    {%- elif current_index == 4 -%}
-    {{icon_flower_4(x,y)}},
-    {%- endif %}
-    {"dr": [0,0,8,8,"{{current_pollen_color}}"]},
-    {"dl": [8,0,8,7,"{{forecast_pollen_color}}"]}
   # pollen_sprite_0: >-
   #   {%-  macro flower_icon_0(x,y) %}
   #   {"db": [{{x}}, {{y}}, 6, 6, [0, 0, 0, 65535, 0, 0, 65127, 0, 65535, 65504, 65535, 0, 0, 0, 0, 65535, 0, 0, 0, 65127, 0, 0, 7556, 0, 65127, 0, 0, 0, 0, 7556, 0, 0, 65127, 0, 0, 7556]]}
@@ -365,14 +334,14 @@ variables:
       }
 
 trigger:
-  - platform: time_pattern
+  - trigger: time_pattern
     seconds: /5
 condition: []
 action:
   - repeat:
       for_each: "{{ message_topics }}"
       sequence:
-        - service: mqtt.publish
+        - action: mqtt.publish
           data:
             qos: 0
             retain: false

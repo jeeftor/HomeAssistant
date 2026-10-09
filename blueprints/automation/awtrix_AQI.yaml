@@ -53,6 +53,16 @@ blueprint:
 
   domain: automation
   input:
+    update_rate:
+      name: Update Interval (seconds)
+      description: How often do you want the blueprint to run
+      selector:
+        number:
+          min: 5
+          max: 600
+          unit_of_measurement: seconds
+          mode: slider
+      default: 5
     awtrix:
       name: AWTRIX Device
       description: Select the Awtrix light
@@ -111,8 +121,9 @@ blueprint:
                     value_template: "{{value.split(',')[5:] | map('int') | list}}"
       selector:
         entity:
-          domain:
-            - sensor
+          filter:
+            domain:
+              - sensor
 
     app_name:
       name: Awtrix Applicaiton name
@@ -221,6 +232,8 @@ variables:
       {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ 'jeef_' ~ app_topic] %}
     {%- endfor %}
     {{ ns.devices | reject('match','unavailable') | list}}
+trigger_variables:
+  update_rate: !input update_rate
 trigger:
   - platform: time_pattern
     seconds: /5

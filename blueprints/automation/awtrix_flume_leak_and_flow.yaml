@@ -1,0 +1,89 @@
+---
+blueprint:
+  name: Awtrix Flume 🚰️ Leak & Flow + 🪫️
+  description: >
+    Leak and High-Flow messaging for the FLUME
+  domain: automation
+  input:
+    awtrix:
+      name: AWTRIX Device
+      description: Select the Awtrix light
+      selector:
+        device:
+          filter:
+            integration: mqtt
+            manufacturer: Blueforcer
+            model: AWTRIX 3
+          multiple: true
+    leak_sensor:
+      name: Leak Sensor
+      description: Binary Leak Sensor (on means leak)
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+    flow_sensor:
+      name: High Flow Sensor
+      description: Binary Flow sensor
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+    icon_flow:
+      name: Icon high flow
+      description: >
+        This is the default high flow
+
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53200_icon_thumb.gif?v=2)
+      selector:
+        text:
+      default: "flow"
+    icon_leak:
+      name: Icon leak
+      description: >
+        This is the default leak icon
+
+
+        ![](https://developer.lametric.com/content/apps/icon_thumbs/53510_icon_thumb.gif?v=2)
+      selector:
+        text:
+      default: "leak"
+
+#https://developer.lametric.com/content/apps/icon_thumbs/53200_icon_thumb.gif?v=2
+#https://developer.lametric.com/content/apps/icon_thumbs/53510_icon_thumb.gif?v=2
+
+mode: restart
+variables:
+  device_ids: !input awtrix
+  app_topic: flume
+  devices_topics: >-
+    {%- macro get_device(device_id) %}
+    {{iif(device_attr(device_id, 'name_by_user') != none, device_attr(device_id, 'name_by_user'), device_attr(device_id, 'name'))}}
+    {% endmacro -%}
+
+    {%- set ns = namespace(devices=[]) %}
+    {%- for device_id in device_ids %}
+      {%- set device=get_device(device_id)|replace(' ','') %}
+      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_topic] %}
+    {%- endfor %}
+    {{ ns.devices | reject('match','unavailable') | list}}
+
+  leak_sensor: !input leak_sensor
+  flow_sensor: !input flow_sensor
+
+  payload: >-
+    flume
+trigger: []
+condition: []
+action:
+  - repeat:
+      for_each: "{{ devices_topics }}"
+      sequence:
+        - action: mqtt.publish
+          data:
+            qos: 0
+            retain: false
+            topic: "{{ repeat.item }}"
+            payload: >
+              {{payload}}

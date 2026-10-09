@@ -1,0 +1,157 @@
+blueprint:
+  name: Scheduled Actions
+  domain: automation
+  description: This automation will let you setup a weekly / time-based scheduled task.
+  input:
+    start_time:
+      name: Start Time
+      description: Time action should start
+      selector:
+        time:
+    end_time:
+      name: End Time
+      description: Time action should stop
+      selector:
+        time:
+    run_on_sunday:
+      name: Run on Sunday
+      description: Should this action run on Sundays
+      selector:
+        boolean:
+    run_on_monday:
+      name: Run on Monday
+      description: Should this action run on Mondays
+      selector:
+        boolean:
+    run_on_tuesday:
+      name: Run on Tuesday
+      description: Should this action run on Tuesdays
+      selector:
+        boolean:
+    run_on_wednesday:
+      name: Run on Wednesday
+      description: Should this action run on Wednesdays
+      selector:
+        boolean:
+    run_on_thursday:
+      name: Run on Thursday
+      description: Should this action run on Thursdays
+      selector:
+        boolean:
+    run_on_friday:
+      name: Run on Friday
+      description: Should this action run on Fridays
+      selector:
+        boolean:
+    run_on_saturday:
+      name: Run on Saturday
+      description: Run on the sabbath?
+      selector:
+        boolean:
+
+    notify_device:
+      name: Device to notify
+      description: Device needs to run the official Home Assistant app to receive notifications
+      selector:
+        device:
+          integration: mobile_app
+variables:
+  run_on_sunday: !input run_on_sunday
+  run_on_monday: !input run_on_monday
+  run_on_tuesday: !input run_on_tuesday
+  run_on_wednesday: !input run_on_wednesday
+  run_on_thursday: !input run_on_thursday
+  run_on_friday: !input run_on_friday
+  run_on_saturday: !input run_on_saturday
+
+trigger_variables:
+  run_on_sunday: !input run_on_sunday
+  run_on_monday: !input run_on_monday
+  run_on_tuesday: !input run_on_tuesday
+  run_on_wednesday: !input run_on_wednesday
+  run_on_thursday: !input run_on_thursday
+  run_on_friday: !input run_on_friday
+  run_on_saturday: !input run_on_saturday
+
+trigger:
+  - platform: time
+    at: !input start_time
+    id: "start_trigger"
+  - platform: time
+    at: !input end_time
+    id: "end_trigger"
+
+action:
+  - choose:
+      - conditions:
+          # Turn On Time
+          - alias: Day of the week match
+            condition: template
+            value_template: |-
+              {{ ((now().strftime('%A') == 'Sunday') and run_on_sunday) or
+              ((now().strftime('%A') == 'Monday') and run_on_monday) or
+              ((now().strftime('%A') == 'Tuesday') and run_on_tuesday) or
+              ((now().strftime('%A') == 'Wednesday') and run_on_wednesday) or
+              ((now().strftime('%A') == 'Thursday') and run_on_thursday) or
+              ((now().strftime('%A') == 'Friday') and run_on_friday) or
+              ((now().strftime('%A') == 'Saturday') and run_on_saturday) }}
+          - alias: Start Trigger
+            condition: trigger
+            id: "start_trigger"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: Starting - On/Off [Day Match]
+      - conditions:
+          # Turn Off Time
+          - alias: Day of the week match
+            condition: template
+            value_template: |-
+              {{ ((now().strftime('%A') == 'Sunday') and run_on_sunday) or
+              ((now().strftime('%A') == 'Monday') and run_on_monday) or
+              ((now().strftime('%A') == 'Tuesday') and run_on_tuesday) or
+              ((now().strftime('%A') == 'Wednesday') and run_on_wednesday) or
+              ((now().strftime('%A') == 'Thursday') and run_on_thursday) or
+              ((now().strftime('%A') == 'Friday') and run_on_friday) or
+              ((now().strftime('%A') == 'Saturday') and run_on_saturday) }}
+          - alias: End Trigger
+            condition: trigger
+            id: "end_trigger"
+        sequence:
+          - device_id: !input notify_device
+            domain: mobile_app
+            type: notify
+            message: Stopping - On/Off [Day match]
+    default:
+      - device_id: !input notify_device
+        domain: mobile_app
+        type: notify
+        message: Default - On/Off Default [Did not match day]
+# {{ ((now().strftime('%A') == 'Sunday') and run_on_sunday) or
+# ((now().strftime('%A') == 'Monday') and run_on_monday) or
+# ((now().strftime('%A') == 'Tuesday') and run_on_tuesday) or
+# ((now().strftime('%A') == 'Wednesday') and run_on_wednesday) or
+# ((now().strftime('%A') == 'Thursday') and run_on_thursday) or
+# ((now().strftime('%A') == 'Friday') and run_on_friday) or
+# ((now().strftime('%A') == 'Saturday') and run_on_saturday) }}
+
+# trigger:
+#   - platform: template
+#     value_template: >-
+#       {% if now().strftime('%A') == 'Sunday' %}
+#       {{ run_on_sunday }}
+#       {% elif now().strftime('%A') == 'Monday' %}
+#       {{ run_on_monday }}
+#       {% elif now().strftime('%A') == 'Tuesday' %}
+#       {{ run_on_tuesday }}
+#       {% elif now().strftime('%A') == 'Wednesday' %}
+#       {{ run_on_wednesday }}
+#       {% elif now().strftime('%A') == 'Thursday' %}
+#       {{ run_on_thursday }}
+#       {% elif now().strftime('%A') == 'Friday' %}
+#       {{ run_on_friday }}
+#       {% elif now().strftime('%A') == 'Saturday' %}
+#       {{ run_on_saturday }}
+#       {% endif %}
+

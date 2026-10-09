@@ -1,0 +1,67 @@
+blueprint:
+  name: "Bed Jumping Alert - NabuCasa Random Voice TTS (Extra Funny Edition)"
+  description: >
+    Random super-silly alert for too much jumping on the bed.
+    Uses NabuCasa Cloud TTS with automatic random English voice each time.
+    Packed with 40+ funny phrases perfect for 5-8 year olds!
+  domain: script
+  input:
+    target_speaker:
+      name: Target Speaker
+      description: The media player / smart speaker to play the alert on
+      selector:
+        entity:
+          domain: media_player
+          multiple: false
+
+sequence:
+  - service: tts.cloud_say
+    data:
+      entity_id: !input target_speaker
+      message: >
+        {% set phrases = [
+          "Whoa! Are you frogs having a jumping party? Frogs belong in ponds, not on beds!",
+          "Alert! Too many kangaroos in the bedroom! Hop off the bed please!",
+          "Hey super-jumpers! The bed isn't a trampoline park — save the big bounces for daytime!",
+          "Bouncy bouncy! But beds get dizzy when you jump too much. Time to lie down, little monkeys!",
+          "Did someone turn the bed into a rocket launchpad? Countdown to cuddle time — 3...2...1...stop!",
+          "Jumping detected! You're not Tigger from Winnie the Pooh — beds aren't for boing-boing!",
+          "Earthquake! Oh wait, it's just super-powered jumping. Let's switch to quiet superhero mode!",
+          "The bed says 'Ouch!' too much bouncing hurts its springs. Give it a rest, please!",
+          "Mini trampoline champions! Gold medal for energy, but silver for bedtime now!",
+          "Hop hop hop! Bunnies hop in the grass, not on mattresses. Hop into bed instead!",
+          "Who let the puppies on the bed? Puppies bounce on grass — time for sleepy puppies!",
+          "Jumping level: MAXIMUM! Time to lower it to zero and snuggle up like cozy bears.",
+          "Bed alert! If you keep jumping, the pillows might run away and hide!",
+          "You're bouncing like popcorn in a microwave! Pop... pop... now time to cool down.",
+          "Hey astronauts! The bed isn't the moon — no more moon jumps please!",
+          "Too much boinging! The bed is giggling so hard it's shaking. Let's make it calm.",
+          "Jumping beans activated! But jumping beans need to go night-night now.",
+          "Is this a bounce house party? The bounce house is closed — bedtime branch open!",
+          "Super bouncy detected! Superheroes need rest to recharge their powers.",
+          "The bed is doing the wobble dance from all that jumping — let's stop the music!",
+          "Kangaroo cousins visiting? Tell them the bed isn't Australia — hop off!",
+          "Bouncy castle in the bedroom? Castles close at bedtime — lights out!",
+          "You're jumping higher than a giraffe on tippy-toes! Giraffes sleep standing up — you can lie down!",
+          "Alert: Bed trampoline overload! Please hit the off button and get cozy.",
+          "Froggy jump party over! Frogs say ribbit... and goodnight!",
+          "Too much bounce! The bed is seasick from all the waves you're making.",
+          "Jumping ninjas! Ninjas are super sneaky and quiet at night — sneaky sleepy time!",
+          "The bed whispered: 'Please stop jumping, I need a nap too!'",
+          "Bounce bounce stop! Like a ball that finally rolls under the bed for bedtime.",
+          "You're more bouncy than a rubber chicken! Chickens don't jump on beds — cluck cluck night-night!",
+          "Volcano jumping! If you keep it up, lava pillows might erupt... better cool it down!",
+          "Hey little tigers! Tigers pounce in the jungle, not on mattresses. Roar... then snore!",
+          "Bed says: 'I'm not a playground slide — no more up-and-down adventures tonight!'",
+          "Jumping detected — initiating funny voice shutdown sequence... beep boop... stop jumping!",
+          "Too many boings! Boing sounds are for daytime toys, not nighttime beds.",
+          "The mattress is waving a white flag — it surrenders! Time for peace and quiet.",
+          "You're bouncing like jelly on a plate! Jelly wobbles best when it's still.",
+          "Alien invasion — bouncy aliens! They need to beam back to their sleepy spaceship now.",
+          "Jumping jackpot! You win... a big hug and cozy blankets instead!",
+          "Bed trampoline closing in 5...4...3...2...1... cuddle station open!"
+        ] %}
+        {{ phrases | random }}
+    # No voice/language specified = random English voice from NabuCasa each run
+
+mode: single

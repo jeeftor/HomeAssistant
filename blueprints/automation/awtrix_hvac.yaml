@@ -116,3 +116,27 @@ action:
             topic: "{{ repeat.item }}"
             payload: >
               {{payload}}
+
+#
+
+#     {%- if is_running and mode == 'heat' }
+#     {
+#       "icon":"heat",
+#       "text": [
+#         {"t":"{{temp_current_floor}}", "c": "#ffffff"},
+#         {"t":">", "c": "#9c9d97"},
+#         {"t":"{{target_temp}}", "c": "#ffffff"}
+#       ]
+#     }
+# {%- endif %}
+
+# {%- if is_running and mode == 'cool' %}
+#     {
+#       "icon":"cool",
+#       "text": [
+#         {"t":"{{temp_current_ceil}}", "c": "#ffffff"},
+#         {"t":">", "c": "#9c9d97"},
+#         {"t":"{{target_temp}}", "c": "#ffffff"}
+#       ]
+#     }
+# {%- endif %}

@@ -1,9 +1,7 @@
----
 blueprint:
-  name: AWTRIX 📱️ Mobile App - Device 🔋️ Battery Monitor 🪫️
-  description: >
-    This blueprint will print out the battery status of a device available to home assistant.
-    It uses a custom icon set you need to install.
+  name: "AWTRIX \U0001F4F1️ Mobile App - Device \U0001F50B️ Battery Monitor \U0001FAAB️"
+  description: 'This blueprint will print out the battery status of a device available
+    to home assistant. It uses a custom icon set you need to install.
 
     You can find all the icons here: https://github.com/jeeftor/HomeAssistant/tree/master/icons/phone
 
@@ -15,6 +13,7 @@ blueprint:
 
     ![](https://developer.lametric.com/content/apps/icon_thumbs/53212_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53213_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53214_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53215_icon_thumb.gif?v=1)![](https://developer.lametric.com/content/apps/icon_thumbs/53216_icon_thumb.gif?v=1)
 
+    '
   domain: automation
   input:
     awtrix:
@@ -23,7 +22,7 @@ blueprint:
       selector:
         device:
           filter:
-            integration: mqtt
+          - integration: mqtt
             manufacturer: Blueforcer
             model: AWTRIX 3
           multiple: true
@@ -32,6 +31,8 @@ blueprint:
       description: This is the app name listed in the MQTT topic - it should be unique
       selector:
         text:
+          multiline: false
+          multiple: false
       default: phone_battery
     battery:
       name: Phone or device
@@ -40,91 +41,81 @@ blueprint:
         entity:
           multiple: false
           filter:
-            - integration: mobile_app
-              device_class: battery
-        # multiple: false
+          - integration: mobile_app
+            device_class:
+            - battery
+          reorder: false
     message_text:
       name: Text to Display
       description: This is the text to dispally on the screen
       selector:
         text:
+          multiline: false
+          multiple: false
       default: iphone
     push_icon:
       name: Icon Mode
-      description: >
-        Please select the pushIcon setting for the icon
-
-          - `0`  Icon doesn't move
-
-          - `1`  Icon moves with text and will not appear again
-
-          - `2` Icon moves with text but appears again when the text starts to scroll again
+      description: "Please select the pushIcon setting for the icon\n\n  - `0`  Icon
+        doesn't move\n\n  - `1`  Icon moves with text and will not appear again\n\n
+        \ - `2` Icon moves with text but appears again when the text starts to scroll
+        again\n"
       selector:
         select:
           options:
-            - label: Icon doesn't move (default)
-              value: "0"
-            - label: Icon moves with text and will not appear again
-              value: "1"
-            - label: Icon moves with text but appears again when the text starts to scroll again
-              value: "2"
+          - label: Icon doesn't move (default)
+            value: '0'
+          - label: Icon moves with text and will not appear again
+            value: '1'
+          - label: Icon moves with text but appears again when the text starts to
+              scroll again
+            value: '2'
+          multiple: false
+          custom_value: false
+          sort: false
     show_below:
       name: Show Below x percent
-      description: Only show the application on the clock when the battery level is below the specified percent
-
+      description: Only show the application on the clock when the battery level is
+        below the specified percent
       selector:
         number:
-          min: 1
-          max: 101
-          unit_of_measurement: "percent"
-
+          min: 1.0
+          max: 101.0
+          unit_of_measurement: percent
+          step: 1.0
+          mode: slider
       default: 101
-
+  source_url: https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/blueprints/automation/awtrix_battery_monitor.yaml
 mode: restart
 variables:
   device_ids: !input awtrix
   app_name: !input app_name
   show_below: !input show_below
-  devices_topics: >-
-    {%- macro get_device_topic(device_id) %}
-    {{- states((device_entities(device_id) | select('search','device_topic') | list)[0]) }}
-    {%- endmacro %}
-
-    {%- set ns = namespace(devices=[]) %}
-    {%- for device_id in device_ids %}
-      {%- set device=get_device_topic(device_id)|replace(' ','') %}
-      {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_name] %}
-    {%- endfor %}
-    {{ ns.devices | reject('match','unavailable') | list}}
-
+  devices_topics: "{%- macro get_device_topic(device_id) %} {{- states((device_entities(device_id)
+    | select('search','device_topic') | list)[0]) }} {%- endmacro %}\n{%- set ns =
+    namespace(devices=[]) %} {%- for device_id in device_ids %}\n  {%- set device=get_device_topic(device_id)|replace('
+    ','') %}\n  {% set ns.devices = ns.devices + [ device ~ '/custom/' ~ app_name]
+    %}\n{%- endfor %} {{ ns.devices | reject('match','unavailable') | list}}"
   battery_sensor: !input battery
-  base_icon: "{{states[battery_sensor] }}"
+  base_icon: '{{states[battery_sensor] }}'
   message_text: !input message_text
   push_icon: !input push_icon
-  payload: >-
-    {"icon":"{{ states[battery_sensor].attributes.icon 
-        | replace('mdi:','') 
-        | replace('90','80') 
-        | replace('70','60')
-        | replace('50','40')
-        | replace('30','20')}}",
-        "text":"{{message_text}}",
-        "pushIcon":{{push_icon}},
-        "progress":"{{states[battery_sensor].state}}","pushIcon":1}
-
+  payload: "{\"icon\":\"{{ states[battery_sensor].attributes.icon \n    | replace('mdi:','')
+    \n    | replace('90','80') \n    | replace('70','60')\n    | replace('50','40')\n
+    \   | replace('30','20')}}\",\n    \"text\":\"{{message_text}}\",\n    \"pushIcon\":{{push_icon}},\n
+    \   \"progress\":\"{{states[battery_sensor].state}}\",\"pushIcon\":1}"
 trigger:
-  - trigger: time_pattern
-    minutes: /1
-
+- trigger: time_pattern
+  minutes: /1
 condition: []
 action:
-  - repeat:
-      for_each: "{{ devices_topics }}"
-      sequence:
-        - action: mqtt.publish
-          data:
-            qos: 0
-            retain: false
-            topic: "{{ repeat.item }}"
-            payload: >
-              {{payload}}
+- repeat:
+    for_each: '{{ devices_topics }}'
+    sequence:
+    - action: mqtt.publish
+      data:
+        qos: 0
+        retain: false
+        topic: '{{ repeat.item }}'
+        payload: '{{payload}}
+
+          '

@@ -1,0 +1,551 @@
+blueprint:
+  name: A State Monitor with Actionable Notifications
+  description: >
+    Monitors an entity and sends notifications to a mobile app at regular intervals when it reaches a specified state.
+    For cover entities, includes an actionable notification to close the cover, with the action handled within the automation.
+    Messages are formatted as "[ENTITY NAME] is [Condition Name] for X hrs".
+    Includes an initial delay before the first notification, skipping the immediate "is now" notification if delay is set.
+    Allows setting the iOS interruption level for notifications.
+    Requires Home Assistant 2022.4.0 or later and iOS Companion App 2023.12 or later for dynamic notifications.
+  domain: automation
+  homeassistant:
+    min_version: 2022.4.0
+  input:
+    monitored_entity:
+      name: Monitored Entity
+      description: The entity to monitor for state changes (e.g., cover.garage_door)
+      selector:
+        entity:
+    target_state:
+      name: Target State
+      description: >
+        The state to monitor (e.g., "open" for covers). Leave blank to use defaults:
+          - `cover`: `open`
+          - `binary_sensor`: `on`
+          - Other entities: `on`
+      selector:
+        text:
+      default: ""
+    message_state:
+      name: Condition Name
+      description: The text to include in notifications (e.g., "Open" or "Still Open")
+      selector:
+        text:
+      default: "Open"
+    notify_device:
+      name: Notification Device
+      description: The mobile app device to send notifications to
+      selector:
+        device:
+          filter:
+            integration: mobile_app
+    initial_delay_minutes:
+      name: Initial Delay (Minutes)
+      description: How long to wait before sending the first notification (set to 0 for immediate notification)
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: minutes
+    interval_minutes:
+      name: Notification Interval (Minutes)
+      description: How often to send notifications while in the target state, after the initial delay
+      default: 30
+      selector:
+        number:
+          min: 1
+          max: 180
+          unit_of_measurement: minutes
+    interruption_level:
+      name: iOS Interruption Level
+      description: The interruption level for iOS notifications (requires iOS 15 or later)
+      default: active
+      selector:
+        select:
+          options:
+            - passive
+            - active
+            - time-sensitive
+            - critical
+    advanced:
+      name: Advanced Options
+      icon: mdi:cog
+      description: Debugging options for troubleshooting
+      input:
+        debug_mode:
+          name: Debug Mode
+          description: Enable to publish debug data to an MQTT topic
+          selector:
+            boolean:
+          default: false
+        mqtt_topic:
+          name: MQTT Topic for Debug Data
+          description: The MQTT topic to publish debug data to when debug mode is enabled
+          selector:
+            text:
+          default: /dev/state-monitor
+
+variables:
+  initial_delay_minutes: !input initial_delay_minutes
+  interval_minutes: !input interval_minutes
+  monitored_entity: !input monitored_entity
+  notify_device: !input notify_device
+  message_state: !input message_state
+  interruption_level: !input interruption_level
+  entity_name: "{{ state_attr(monitored_entity, 'friendly_name') or monitored_entity.split('.')[1] | replace('_', ' ') | title }}"
+  notify_action: >-
+    {% set devices = device_entities(notify_device) | list %}
+    {% if devices | select('match', 'notify\\.mobile_app_.*') | list | length > 0 %}
+      notify.mobile_app_{{ devices[0].split('.')[1] }}
+    {% else %}
+      logbook.log
+    {% endif %}
+  is_notify_available: >-
+    {% set devices = device_entities(notify_device) | list %}
+    {{ devices | select('match', 'notify\\.mobile_app_.*') | list | length > 0 }}
+  unique_tag: "{{ monitored_entity | replace('.', '_') }}_state_monitor"
+  default_state: >-
+    {% if monitored_entity.split('.')[0] == 'cover' %}
+      open
+    {% elif monitored_entity.split('.')[0] == 'binary_sensor' %}
+      on
+    {% else %}
+      on
+    {% endif %}
+  ts: !input target_state
+  target_state: >-
+    {% if not ts or ts == '' %}
+      {{ default_state | trim }}
+    {% else %}
+      {{ ts | trim }}
+    {% endif %}
+  is_cover: >-
+    {% if monitored_entity.split('.')[0] == 'cover' %}
+      true
+    {% else %}
+      false
+    {% endif %}
+  actions: >-
+    {% if is_cover == 'true' %}
+      [
+        {
+          "identifier": "CLOSE_COVER",
+          "title": "Close {{ entity_name }}",
+          "activationMode": "background",
+          "authenticationRequired": true
+        }
+      ]
+    {% else %}
+      []
+    {% endif %}
+  debug_mode: !input debug_mode
+  mqtt_topic: !input mqtt_topic
+
+trigger:
+  - id: state_change
+    trigger: state
+    entity_id: !input monitored_entity
+  - id: ha_start
+    trigger: homeassistant
+    event: start
+  - id: automation_reloaded
+    trigger: event
+    event_type: automation_reloaded
+  - id: notification_action
+    trigger: event
+    event_type: ios.notification_action_fired
+    event_data:
+      actionName: "CLOSE_COVER"
+
+action:
+  - choose:
+      # Handle notification action (close cover)
+      - conditions:
+          - condition: trigger
+            id:
+              - notification_action
+          - condition: template
+            value_template: "{{ trigger.event.data.entity_id is defined }}"
+        sequence:
+          - action: cover.close_cover
+            target:
+              entity_id: "{{ trigger.event.data.entity_id }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ is_notify_available }}"
+                sequence:
+                  - action: "{{ notify_action }}"
+                    data:
+                      message: "clear_notification"
+                      data:
+                        tag: "{{ unique_tag }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ not is_notify_available }}"
+                sequence:
+                  - action: logbook.log
+                    data:
+                      name: "State Monitor"
+                      message: "Failed to clear notification for {{ entity_name }} ({{ monitored_entity }}) - Notify service unavailable"
+          - if: "{{ debug_mode }}"
+            then:
+              - action: mqtt.publish
+                data:
+                  topic: "{{ mqtt_topic }}"
+                  payload: >-
+                    Action triggered: Closed {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+      # Handle state monitoring and notifications
+      - conditions:
+          - condition: template
+            value_template: "{{states(monitored_entity) in [target_state]}}"
+        sequence:
+          - choose:
+              # Case 1: No initial delay (immediate notification)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ initial_delay_minutes == 0 }}"
+                sequence:
+                  - variables:
+                      message: "{{ entity_name }} is now {{ message_state }}"
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ is_notify_available }}"
+                        sequence:
+                          - action: "{{ notify_action }}"
+                            data:
+                              title: "{{ entity_name }}"
+                              message: "{{ message }}"
+                              data:
+                                tag: "{{ unique_tag }}"
+                                actions: "{{ actions }}"
+                                entity_id: "{{ monitored_entity }}"
+                                interruptionLevel: "{{ interruption_level }}"
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ not is_notify_available }}"
+                        sequence:
+                          - action: logbook.log
+                            data:
+                              name: "State Monitor"
+                              message: "Failed to send initial notification for {{ entity_name }} ({{ monitored_entity }}) - Notify service unavailable"
+                  - if: "{{ debug_mode }}"
+                    then:
+                      - action: mqtt.publish
+                        data:
+                          topic: "{{ mqtt_topic }}"
+                          payload: >-
+                            Sent initial notification for {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+              # Case 2: Initial delay (skip immediate notification)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ initial_delay_minutes > 0 }}"
+                sequence:
+                  - delay:
+                      minutes: "{{ initial_delay_minutes }}"
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{states(monitored_entity) in [target_state]}}"
+              sequence:
+                - delay:
+                    minutes: "{{ interval_minutes }}"
+                - variables:
+                    last_changed_str: >-
+                      {{ relative_time(states[monitored_entity].last_changed | default(0))
+                      | replace('hours', 'hr')
+                      | replace('hour', 'hr')
+                      | replace('seconds', 'sec')
+                      | replace('minutes', 'min')
+                      | replace('minute', 'min') }}
+                    message: "{{ entity_name }} is {{ message_state }} for {{ last_changed_str }}"
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ is_notify_available }}"
+                      sequence:
+                        - action: "{{ notify_action }}"
+                          data:
+                            title: "{{ entity_name }}"
+                            message: "{{ message }}"
+                            data:
+                              tag: "{{ unique_tag }}"
+                              actions: "{{ actions }}"
+                              entity_id: "{{ monitored_entity }}"
+                              interruptionLevel: "{{ interruption_level }}"
+                    - conditions:
+                        - condition: template
+                          value_template: "{{ not is_notify_available }}"
+                      sequence:
+                        - action: logbook.log
+                          data:
+                            name: "State Monitor"
+                            message: "Failed to send repeat notification for {{ entity_name }} ({{ monitored_entity }}) - Notify service unavailable"
+                - if: "{{ debug_mode }}"
+                  then:
+                    - action: mqtt.publish
+                      data:
+                        topic: "{{ mqtt_topic }}"
+                        payload: >-
+                          Sent notification for {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+    default:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ is_notify_available }}"
+            sequence:
+              - action: "{{ notify_action }}"
+                data:
+                  message: "clear_notification"
+                  data:
+                    tag: "{{ unique_tag }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ not is_notify_available }}"
+            sequence:
+              - action: logbook.log
+                data:
+                  name: "State Monitor"
+                  message: "Failed to clear notification for {{ entity_name }} ({{ monitored_entity }}) - Notify service unavailable"
+      - action: logbook.log
+        data:
+          name: "State Monitor"
+          message: "Cleared notification for {{ entity_name }} ({{ monitored_entity }})"
+      - if: "{{ debug_mode }}"
+        then:
+          - action: mqtt.publish
+            data:
+              topic: "{{ mqtt_topic }}"
+              payload: >-
+                Cleared notification for {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+
+mode: restart
+# blueprint:
+#   name: A State Monitor with Actionable Notifications
+#   description: >
+#     Monitors an entity and sends notifications to a mobile app at regular intervals when it reaches a specified state.
+#     For cover entities, includes an actionable notification to close the cover, with the action handled within the automation.
+#     Messages are formatted as "[ENTITY NAME] is [Condition Name] for X hrs".
+#     Requires Home Assistant 2022.4.0 or later and iOS Companion App 2023.12 or later for dynamic notifications.
+#   domain: automation
+#   homeassistant:
+#     min_version: 2022.4.0
+#   input:
+#     monitored_entity:
+#       name: Monitored Entity
+#       description: The entity to monitor for state changes (e.g., cover.garage_door)
+#       selector:
+#         entity:
+#     target_state:
+#       name: Target State
+#       description: >
+#         The state to monitor (e.g., "open" for covers). Leave blank to use defaults:
+#           - `cover`: `open`
+#           - `binary_sensor`: `on`
+#           - Other entities: `on`
+#       selector:
+#         text:
+#       default: ""
+#     message_state:
+#       name: Condition Name
+#       description: The text to include in notifications (e.g., "Open" or "Still Open")
+#       selector:
+#         text:
+#       default: "Open"
+#     notify_device:
+#       name: Notification Device
+#       description: The mobile app device to send notifications to
+#       selector:
+#         device:
+#           filter:
+#             integration: mobile_app
+#     interval_minutes:
+#       name: Notification Interval (Minutes)
+#       description: How often to send notifications while in the target state
+#       default: 30
+#       selector:
+#         number:
+#           min: 1
+#           max: 180
+#           unit_of_measurement: minutes
+#     advanced:
+#       name: Advanced Options
+#       icon: mdi:cog
+#       description: Debugging options for troubleshooting
+#       input:
+#         debug_mode:
+#           name: Debug Mode
+#           description: Enable to publish debug data to an MQTT topic
+#           selector:
+#             boolean:
+#           default: false
+#         mqtt_topic:
+#           name: MQTT Topic for Debug Data
+#           description: The MQTT topic to publish debug data to when debug mode is enabled
+#           selector:
+#             text:
+#           default: /dev/state-monitor
+
+# variables:
+#   interval_minutes: !input interval_minutes
+#   monitored_entity: !input monitored_entity
+#   notify_device: !input notify_device
+#   message_state: !input message_state
+#   entity_name: "{{ state_attr(monitored_entity, 'friendly_name') or monitored_entity.split('.')[1] | replace('_', ' ') | title }}"
+#   notify_action: >-
+#     {% set devices = device_entities(notify_device) | list %}
+#     notify.mobile_app_{{ devices[0].split('.')[1] }}
+#   unique_tag: "{{ monitored_entity | replace('.', '_') }}_state_monitor"
+#   default_state: >-
+#     {% if monitored_entity.split('.')[0] == 'cover' %}
+#       open
+#     {% elif monitored_entity.split('.')[0] == 'binary_sensor' %}
+#       on
+#     {% else %}
+#       on
+#     {% endif %}
+#   ts: !input target_state
+#   target_state: >-
+#     {% if not ts or ts == '' %}
+#       {{ default_state | trim }}
+#     {% else %}
+#       {{ ts | trim }}
+#     {% endif %}
+#   is_cover: >-
+#     {% if monitored_entity.split('.')[0] == 'cover' %}
+#       true
+#     {% else %}
+#       false
+#     {% endif %}
+#   actions: >-
+#     {% if is_cover == 'true' %}
+#       [
+#         {
+#           "identifier": "CLOSE_COVER",
+#           "title": "Close {{ entity_name }}",
+#           "activationMode": "background",
+#           "authenticationRequired": true
+#         }
+#       ]
+#     {% else %}
+#       []
+#     {% endif %}
+#   debug_mode: !input debug_mode
+#   mqtt_topic: !input mqtt_topic
+
+# trigger:
+#   - id: state_change
+#     trigger: state
+#     entity_id: !input monitored_entity
+#   - id: ha_start
+#     trigger: homeassistant
+#     event: start
+#   - id: automation_reloaded
+#     trigger: event
+#     event_type: automation_reloaded
+#   - id: notification_action
+#     trigger: event
+#     event_type: ios.notification_action_fired
+#     event_data:
+#       actionName: "CLOSE_COVER"
+
+# action:
+#   - choose:
+#       # Handle notification action (close cover)
+#       - conditions:
+#           - condition: trigger
+#             id:
+#               - notification_action
+#           - condition: template
+#             value_template: "{{ trigger.event.data.entity_id is defined }}"
+#         sequence:
+#           - action: cover.close_cover
+#             target:
+#               entity_id: "{{ trigger.event.data.entity_id }}"
+#           - action: "{{ notify_action }}"
+#             data:
+#               message: "clear_notification"
+#               data:
+#                 tag: "{{ unique_tag }}"
+#           - if: "{{ debug_mode }}"
+#             then:
+#               - action: mqtt.publish
+#                 data:
+#                   topic: "{{ mqtt_topic }}"
+#                   payload: >-
+#                     Action triggered: Closed {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+#       # Handle state monitoring and notifications
+#       - conditions:
+#           - condition: template
+#             value_template: "{{states(monitored_entity) in [target_state]}}"
+
+#         sequence:
+#           - variables:
+#               message: "{{ entity_name }} is now {{ message_state }}"
+#           - action: "{{ notify_action }}"
+#             data:
+#               title: "{{ entity_name }}"
+#               message: "{{ message }}"
+#               data:
+#                 tag: "{{ unique_tag }}"
+#                 actions: "{{ actions }}"
+#                 entity_id: "{{ monitored_entity }}"
+#           - if: "{{ debug_mode }}"
+#             then:
+#               - action: mqtt.publish
+#                 data:
+#                   topic: "{{ mqtt_topic }}"
+#                   payload: >-
+#                     Sent initial notification for {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+#           - repeat:
+#               while:
+#                 - condition: template
+#                   value_template: "{{states(monitored_entity) in [target_state]}}"
+#               sequence:
+#                 - delay:
+#                     minutes: "{{ interval_minutes }}"
+#                 - variables:
+#                     last_changed_str: >-
+#                       {{ relative_time(states[monitored_entity].last_changed | default(0))
+#                       | replace('hours', 'hr')
+#                       | replace('hour', 'hr')
+#                       | replace('seconds', 'sec')
+#                       | replace('minutes', 'min')
+#                       | replace('minute', 'min') }}
+#                     message: "{{ entity_name }} is {{ message_state }} for {{ last_changed_str }}"
+#                 - action: "{{ notify_action }}"
+#                   data:
+#                     title: "{{ entity_name }}"
+#                     message: "{{ message }}"
+#                     data:
+#                       tag: "{{ unique_tag }}"
+#                       actions: "{{ actions }}"
+#                       entity_id: "{{ monitored_entity }}"
+#                 - if: "{{ debug_mode }}"
+#                   then:
+#                     - action: mqtt.publish
+#                       data:
+#                         topic: "{{ mqtt_topic }}"
+#                         payload: >-
+#                           Sent repeat notification for {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+#     default:
+#       # - action: logbook.log
+#       #   data:
+#       #     name: "JEEF-DEBUG"
+#       #     message: "Trigger: {{trigger}}. Wanted State: {{target_state}} {{state(monitored_entity)}}"
+#       - action: "{{ notify_action }}"
+#         data:
+#           message: "clear_notification"
+#           data:
+#             tag: "{{ unique_tag }}"
+#       - if: "{{ debug_mode }}"
+#         then:
+#           - action: mqtt.publish
+#             data:
+#               topic: "{{ mqtt_topic }}"
+#               payload: >-
+#                 Cleared notification for {{ entity_name }} ({{ monitored_entity }}) at {{ now() }}
+
+# mode: restart

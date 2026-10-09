@@ -1,0 +1,229 @@
+blueprint:
+  name: Fan Sync 🌀
+  description: Synchronize a register/booster fan with the main HVAC system. Run the fan at different speeds based on cooling, heating, or fan-only mode, with a configurable trailing delay after cooling/heat cycles.
+  domain: automation
+  input:
+    climate_entity:
+      name: HVAC Climate
+      description: The main thermostat/climate entity to watch (e.g. ecobee).
+      selector:
+        entity:
+          domain: climate
+    fan_mode_select:
+      name: Register Fan Mode Select
+      description: The select entity that controls the register fan mode (FAN, SLEEP, COOL, HEAT).
+      selector:
+        entity:
+          domain: select
+    fan_speed_select:
+      name: Register Fan Speed Select
+      description: The select entity that controls the register fan speed (1-10).
+      selector:
+        entity:
+          domain: select
+    cooling_speed:
+      name: Cooling Speed
+      description: Register fan speed when the AC is running.
+      default: "7"
+      selector:
+        select:
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+            - "8"
+            - "9"
+            - "10"
+    heating_speed:
+      name: Heating Speed
+      description: Register fan speed when the heat is running.
+      default: "8"
+      selector:
+        select:
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+            - "8"
+            - "9"
+            - "10"
+    fan_speed:
+      name: Fan Only Speed
+      description: Register fan speed when the HVAC fan is running (no heating/cooling).
+      default: "4"
+      selector:
+        select:
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+            - "8"
+            - "9"
+            - "10"
+    idle_speed:
+      name: Idle Speed
+      description: Register fan speed used during the trailing delay after cooling/heat stops, and for fan-only idle.
+      default: "1"
+      selector:
+        select:
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+            - "8"
+            - "9"
+            - "10"
+    trailing_delay:
+      name: Trailing Delay
+      description: How long to keep the register fan running after cooling or heat stops.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 1
+          unit_of_measurement: minutes
+
+mode: restart
+
+triggers:
+  - trigger: state
+    entity_id: !input climate_entity
+    attribute: hvac_action
+    to: "cooling"
+    id: "cooling"
+  - trigger: state
+    entity_id: !input climate_entity
+    attribute: hvac_action
+    to: "heating"
+    id: "heating"
+  - trigger: state
+    entity_id: !input climate_entity
+    attribute: hvac_action
+    to: "fan"
+    id: "fan"
+  - trigger: state
+    entity_id: !input climate_entity
+    attribute: hvac_action
+    from: "cooling"
+    to: "idle"
+    id: "idle_from_cooling"
+  - trigger: state
+    entity_id: !input climate_entity
+    attribute: hvac_action
+    from: "heating"
+    to: "idle"
+    id: "idle_from_heating"
+  - trigger: state
+    entity_id: !input climate_entity
+    attribute: hvac_action
+    from: "fan"
+    to: "idle"
+    id: "idle_from_fan"
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "cooling"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: !input fan_mode_select
+            data:
+              option: "FAN"
+          - action: select.select_option
+            target:
+              entity_id: !input fan_speed_select
+            data:
+              option: !input cooling_speed
+
+      - conditions:
+          - condition: trigger
+            id: "heating"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: !input fan_mode_select
+            data:
+              option: "FAN"
+          - action: select.select_option
+            target:
+              entity_id: !input fan_speed_select
+            data:
+              option: !input heating_speed
+
+      - conditions:
+          - condition: trigger
+            id: "fan"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: !input fan_mode_select
+            data:
+              option: "FAN"
+          - action: select.select_option
+            target:
+              entity_id: !input fan_speed_select
+            data:
+              option: !input fan_speed
+
+      - conditions:
+          - condition: trigger
+            id: "idle_from_cooling"
+          - condition: trigger
+            id: "idle_from_heating"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: !input fan_mode_select
+            data:
+              option: "FAN"
+          - action: select.select_option
+            target:
+              entity_id: !input fan_speed_select
+            data:
+              option: !input idle_speed
+          - delay:
+              minutes: !input trailing_delay
+          - action: select.select_option
+            target:
+              entity_id: !input fan_mode_select
+            data:
+              option: "SLEEP"
+          - action: select.select_option
+            target:
+              entity_id: !input fan_speed_select
+            data:
+              option: !input idle_speed
+
+      - conditions:
+          - condition: trigger
+            id: "idle_from_fan"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: !input fan_mode_select
+            data:
+              option: "SLEEP"
+          - action: select.select_option
+            target:
+              entity_id: !input fan_speed_select
+            data:
+              option: !input idle_speed
