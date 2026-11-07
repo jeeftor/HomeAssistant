@@ -817,6 +817,14 @@ variables:
     {%- if show_sun_rise_set and sun_event_minute_threshold >= sun_min_until_next_event -%}
       {{ sun_event_payload }}
     {%- endif -%}
+  # Minute tick for the sun app: every minute for the relative countdown. An actual time only changes at
+  # sunrise/sunset (sun_changed trigger), so it is sent once when the display window opens.
+  sun_tick_due: >-
+    {{
+      sun_payload | string != ''
+      and (sun_time_type != 'Actual'
+        or sun_min_until_next_event | int(0) == sun_event_minute_threshold | int(0))
+    }}
 
   # ------------------------------
   # Icons&Stuff
@@ -983,7 +991,7 @@ conditions:
   - condition: template
     value_template: >-
       {%- if trigger_id == 'tick' -%}
-        {{ full_refresh_due or sun_payload | string != '' }}
+        {{ full_refresh_due or sun_tick_due }}
       {%- elif trigger_id == 'temp_changed' -%}
         {{ temp_change_visible }}
       {%- else -%}
