@@ -9,6 +9,7 @@ This archive contains various blueprints for Home Assistant
 |Awtrix 🚪️ Door Status Monitor 🔍️|Icon based monitor for Binary/Sensor (open/close) status monitoring. Generally used for doors and windows|[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_door_status.yaml)  |
 |Awtrix HVAC 🥵 🌡️ 🥶| See the current heating/cooling mode |[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_hvac.yaml)|
 | Awtrix Weather ⛈️ + Forecast + 🌕️ | Super weather blueprint - Conditions + Forecast + Sunrise/Set + MoonPhase| [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_weatherflow.yaml) | ![](./resources/WeatherPreview1.gif) |
+| Awtrix NG Weather ⛈️ + Forecast + 🌕️ | Same weather blueprint for **AWTRIX NG** (separate file, the AWTRIX 3 version above is unchanged)| [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_ng_weatherflow.yaml) | ![](./resources/WeatherPreview1.gif) |
 | Awtrix UV ☀️ Humidity💧️ | See Humidity & Current UV Index | [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_weatherflow_uv_hum.yaml)|![](./resources/uv_preview.gif)|
 | Awtrix AQI IQAir/AirNow.gov 🌬️ | Give current AQI + Forecast | [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_AQI.yaml)|![](./resources/aqi_preview.gif)|
 | Awtrix Pollen 🥀️| Parses IQAir's pollen data into a nice picture. (Only works if IQAir supports pollen forecasts in your region) | [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fjeeftor%2FHomeAssistant%2Fmaster%2Fblueprints%2Fautomation%2Fawtrix_pollen.yaml)|![](./resources/pollen/pollenPreview.gif)|
@@ -26,6 +27,12 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/ma
 
 # Or you can run 
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon.sh)" -- IP_ADDRESS_OF_CLOCK
+```
+
+On AWTRIX NG use `upload_icon_ng.sh` instead (same idea, takes an optional icon folder such as `weather`):
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/jeeftor/HomeAssistant/master/icons/upload_icon_ng.sh)" -- IP_ADDRESS_OF_CLOCK weather
 ```
 
 ### Innoveli
