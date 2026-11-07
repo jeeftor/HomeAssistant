@@ -625,8 +625,15 @@ blueprint:
       selector:
         text:
       default: "w-sunset"
-mode: restart
+mode: queued
+max: 10
+max_exceeded: silent
 variables:
+  trigger_id: "{{ trigger.id if trigger is defined and trigger.id is defined else 'manual' }}"
+  # Every 30 minutes, or for any trigger other than the minute tick and sunrise/sunset
+  full_refresh_due: "{{ now().minute % 30 == 0 }}"
+  update_main: >-
+    {{ trigger_id not in ['tick', 'sun_changed'] or (trigger_id == 'tick' and full_refresh_due) }}
   device_ids: !input awtrix
   app_topic: jeef_weather
   sun_app_topic: jeef_weather_sun
@@ -697,15 +704,31 @@ variables:
   temp_digits: !input temp_digits
   temp_suffix: !input temp_suffix
 
-  temp_text: >-
-    {%- macro round_and_set_temp(temp_var, temp_suffix, digits=0) -%}
-    {%- if has_value(temp_var) -%}
-      {{ states(temp_var) | round(digits) ~ temp_suffix}} 
-    {%- else -%}
-    {{current_temp ~ temp_suffix}}
+  # One temperature for text and color: the selected sensor, otherwise the weather entity
+  display_temp: >-
+    {%- if is_number(states(current_temp_var)) -%}
+      {{ states(current_temp_var) | float | round(temp_digits | int(0)) }}
+    {%- elif is_number(current_temp) -%}
+      {{ current_temp | float | round(temp_digits | int(0)) }}
     {%- endif -%}
-    {%- endmacro -%}
-    {{ round_and_set_temp(current_temp_var, temp_suffix, temp_digits)}}
+  temp_text: >-
+    {%- if display_temp is number -%}
+      {{ display_temp ~ temp_suffix }}
+    {%- else -%}
+      err
+    {%- endif -%}
+  # Only react to a sensor change that alters the displayed (rounded) value
+  temp_change_visible: >-
+    {%- if trigger_id != 'temp_changed' -%}
+      false
+    {%- else -%}
+      {%- set digits = temp_digits | int(0) -%}
+      {%- set old = trigger.from_state.state if trigger.from_state else '' -%}
+      {%- set new = trigger.to_state.state if trigger.to_state else '' -%}
+      {%- set old_shown = old | float | round(digits) if is_number(old) else 'none' -%}
+      {%- set new_shown = new | float | round(digits) if is_number(new) else 'none' -%}
+      {{ old_shown != new_shown }}
+    {%- endif -%}
 
   text_available_width: >
     {%- if show_moon %}16{%- else %}24{%- endif %}
@@ -766,29 +789,27 @@ variables:
     {%- if sun_time_type == 'Actual' %}
       {{ iif(sun_next_event == 'sunrise',(ts_rise | as_datetime | as_local).strftime(sun_time_format),  (ts_set | as_datetime | as_local).strftime(sun_time_format)) }}
     {%- else %}
-    {#- relative time #}
-      {% set hours = sun_min_until_next_event // 60 %}
-      {% set remaining_minutes = sun_min_until_next_event % 60 %}
-
-      {% if hours == 0 %}
-          {{ remaining_minutes }} min
-      {% else %}
-          [
-            {"t":"{{hours}}", "c":"#ffffff"},
-            {"t":"h", "c":"#9c9d97"},
-            {"t":"{{remaining_minutes}}", "c":"#ffffff"},
-            {"t":"m", "c":"#9c9d97"}
-        ]
-      {% endif %}
-      
+    {#- relative time below one hour; one hour or more uses colored fragments in sun_event_payload #}
+      {{ sun_min_until_next_event | int(0) }} min
     {%- endif %}
   sun_event_icon: >-
     {{ iif(sun_next_event == 'sunrise', icon_sunrise, icon_sunset) }}
   sun_event_payload: >-
+    {%- set minutes = sun_min_until_next_event | int(0) -%}
+    {%- if sun_time_type != 'Actual' and minutes >= 60 -%}
+      {%- set text = [
+        {'text': (minutes // 60) | string, 'color': '#ffffff'},
+        {'text': 'h', 'color': '#9c9d97'},
+        {'text': (minutes % 60) | string, 'color': '#ffffff'},
+        {'text': 'm', 'color': '#9c9d97'}
+      ] -%}
+    {%- else -%}
+      {%- set text = sun_next_str | string | trim -%}
+    {%- endif -%}
     {{
       {
         'icon': sun_event_icon,
-        'text': sun_next_str,
+        'text': text,
         'durationMs': message_duration_riseset | int(0) * 1000
       } | tojson
     }}
@@ -934,12 +955,21 @@ variables:
     {%- endif -%}
 
 triggers:
+  # Every minute: the sunrise/sunset app while it is shown, the full refresh every 30 minutes
   - trigger: time_pattern
-    minutes: /30
-    id: refresh
+    minutes: /1
+    id: tick
   - trigger: state
     entity_id: !input forecast_var
     id: forecast_changed
+  - trigger: state
+    entity_id: !input current_temp_var
+    id: temp_changed
+  # Sunrise and sunset themselves (state only, no attribute changes): remove the sun app right away
+  - trigger: state
+    entity_id: sun.sun
+    to: ~
+    id: sun_changed
   - trigger: homeassistant
     event: start
     id: startup
@@ -950,117 +980,20 @@ triggers:
 conditions:
   - condition: template
     value_template: "{{ is_selected_device_trigger }}"
+  - condition: template
+    value_template: >-
+      {%- if trigger_id == 'tick' -%}
+        {{ full_refresh_due or sun_payload | string != '' }}
+      {%- elif trigger_id == 'temp_changed' -%}
+        {{ temp_change_visible }}
+      {%- else -%}
+        true
+      {%- endif -%}
 actions:
-  - action: weather.get_forecasts
-    target:
-      entity_id: "{{forecast_var}}"
-    data:
-      type: hourly
-    response_variable: forecast_response
-
+  # The sunrise/sunset app does not need the forecast
   - repeat:
       for_each: "{{ device_prefixes }}"
       sequence:
-        - action: mqtt.publish
-          data:
-            topic: "{{ repeat.item }}/cmd/apps/pushed/{{ app_topic }}"
-            payload: >-
-              {%- set forecast = forecast_response[forecast_var]['forecast'] -%}
-              {%- set forecast_hours = [hours_to_show | int(0), forecast | length, 24] | min -%}
-              {%- macro interpolate(dictionary, x) -%}
-              {%- set sorted_keys = dictionary|dictsort -%}
-              {%- set above = sorted_keys|selectattr('0', 'gt', x)|map(attribute='0')|list|first -%}
-              {%- set below = sorted_keys|selectattr('0', 'lt', x)|map(attribute='0')|list|last -%}
-
-              {#- Key matches x exactly -#}
-              {%- if above is defined and dictionary[above] == x -%}
-                {%- set value = dictionary[above] -%}
-                {{ value }}
-              {%- elif below is defined and dictionary[below] == x -%}
-                {%- set value = dictionary[below] -%}
-                {{ value }}
-              {#- Interpolation between two values -#}
-              {%- elif below is defined and above is defined -%}
-                {%- set lower_value = dictionary[below] -%}
-                {%- set upper_value = dictionary[above] -%}
-                {%- set lower_rgb = lower_value[1:] -%}
-                {%- set upper_rgb = upper_value[1:] -%}
-
-                {%- set lower_r = lower_rgb[0:2]|int(base=16) -%}
-                {%- set lower_g = lower_rgb[2:4]|int(base=16) -%}
-                {%- set lower_b = lower_rgb[4:6]|int(base=16) -%}
-
-                {%- set upper_r = upper_rgb[0:2]|int(base=16) -%}
-                {%- set upper_g = upper_rgb[2:4]|int(base=16) -%}
-                {%- set upper_b = upper_rgb[4:6]|int(base=16) -%}
-
-                {%- set interpolation_factor = (x - below) / (above - below) -%}
-                {%- set interpolated_r = ((1 - interpolation_factor) * lower_r + interpolation_factor * upper_r)|int -%}
-                {%- set interpolated_g = ((1 - interpolation_factor) * lower_g + interpolation_factor * upper_g)|int -%}
-                {%- set interpolated_b = ((1 - interpolation_factor) * lower_b + interpolation_factor * upper_b)|int -%}
-
-                {%- set interpolated_hex = '#' ~ '%02X' % interpolated_r ~ '%02X' % interpolated_g ~ '%02X' % interpolated_b -%}
-                {{ interpolated_hex }}
-              {#- Only below key available -#}
-              {%- elif below is defined -%}
-                {%- set value = dictionary[below] -%}
-                {{ value }}
-              {#- Only above key available -#}
-              {%- elif above is defined -%}
-                {%- set value = dictionary[above] -%}
-                {{ value }}
-              {#- No matching keys available -#}
-              {%- else -%}
-                No matching key found.
-              {%- endif -%}
-              {%- endmacro -%}
-
-              {#- Define macro to get length of the forecast -#}
-              {%- macro str_len(stringo) %}
-              {%- if '.' in stringo %}
-              {%- set char_count = (stringo | length) -1 %}{{char_count * 3 + 1 + char_count}}
-              {%- else %}
-              {%- set char_count = (stringo | length) %}{{char_count * 3 + (char_count - 1)}}
-              {%- endif %}
-              {%- endmacro %}
-
-              {#- Define a macro to draw out the forecast lines#}
-                {%- macro draw_forecast_lines(x,hours,height) %}
-                  {%- for hour in range(hours) %}
-                    {%- if height == 0 %}
-                      ["pixel",{{x+hour}},7,"{{interpolate(color_dict, forecast[hour]['temperature']) }}"]
-                    {%- else %}
-                      ["line",{{x+hour}},7,{{x+hour}},{{7 - height}},"{{interpolate(color_dict, forecast[hour]['temperature']) }}"]
-                    {%- endif %}
-                    {%- if hour+1 != hours %},{%endif%}
-                  {%- endfor %}
-                {%- endmacro %}
-
-                {
-                  "draw": [
-                    {%- if forecast_hours > 0 %}
-                    {{draw_forecast_lines(8,forecast_hours,0)}}
-                  {%- endif %}
-                  {%- if current_temp is number -%}
-                  {% if forecast_hours > 0 %},{% endif %}["text",{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, current_temp | float)}}"]
-                  {%- else -%}
-                  {% if forecast_hours > 0 %},{% endif %}["text",8,1,"err","#ff0000"]
-                  {%- endif -%}
-
-                  {% if show_moon %}
-                  ,{{moon_data}}
-                  {% endif %}
-                  ],
-                  "icon": "{{icon}}",
-                  "durationMs": {{message_duration | int(0) * 1000}},
-                  "iconMode": "push",
-                  "lifetimeMs": 2000000,
-                  "lifetimeExpiry":"mark"
-                  {% if show_overlay and overlay %}
-                  ,"overlay": "{{overlay}}"
-                  {% endif %}
-                  }
-
         - action: mqtt.publish
           data:
             qos: 0
@@ -1068,3 +1001,115 @@ actions:
             topic: "{{ repeat.item }}/cmd/apps/pushed/{{ sun_app_topic }}"
             payload: >
               {{sun_payload}}
+
+  # The weather app needs the forecast; skipped when only the sunrise/sunset app is due
+  - if:
+      - condition: template
+        value_template: "{{ update_main }}"
+    then:
+      - action: weather.get_forecasts
+        target:
+          entity_id: "{{forecast_var}}"
+        data:
+          type: hourly
+        response_variable: forecast_response
+
+      - repeat:
+          for_each: "{{ device_prefixes }}"
+          sequence:
+            - action: mqtt.publish
+              data:
+                topic: "{{ repeat.item }}/cmd/apps/pushed/{{ app_topic }}"
+                payload: >-
+                  {%- set forecast = forecast_response[forecast_var]['forecast'] -%}
+                  {%- set forecast_hours = [hours_to_show | int(0), forecast | length, 24] | min -%}
+                  {%- macro interpolate(dictionary, x) -%}
+                  {%- set sorted_keys = dictionary|dictsort -%}
+                  {%- set above = sorted_keys|selectattr('0', 'gt', x)|map(attribute='0')|list|first -%}
+                  {%- set below = sorted_keys|selectattr('0', 'lt', x)|map(attribute='0')|list|last -%}
+
+                  {#- Key matches x exactly -#}
+                  {%- if x in dictionary -%}
+                    {{ dictionary[x] }}
+                  {#- Interpolation between two values -#}
+                  {%- elif below is defined and above is defined -%}
+                    {%- set lower_value = dictionary[below] -%}
+                    {%- set upper_value = dictionary[above] -%}
+                    {%- set lower_rgb = lower_value[1:] -%}
+                    {%- set upper_rgb = upper_value[1:] -%}
+
+                    {%- set lower_r = lower_rgb[0:2]|int(base=16) -%}
+                    {%- set lower_g = lower_rgb[2:4]|int(base=16) -%}
+                    {%- set lower_b = lower_rgb[4:6]|int(base=16) -%}
+
+                    {%- set upper_r = upper_rgb[0:2]|int(base=16) -%}
+                    {%- set upper_g = upper_rgb[2:4]|int(base=16) -%}
+                    {%- set upper_b = upper_rgb[4:6]|int(base=16) -%}
+
+                    {%- set interpolation_factor = (x - below) / (above - below) -%}
+                    {%- set interpolated_r = ((1 - interpolation_factor) * lower_r + interpolation_factor * upper_r)|int -%}
+                    {%- set interpolated_g = ((1 - interpolation_factor) * lower_g + interpolation_factor * upper_g)|int -%}
+                    {%- set interpolated_b = ((1 - interpolation_factor) * lower_b + interpolation_factor * upper_b)|int -%}
+
+                    {%- set interpolated_hex = '#' ~ '%02X' % interpolated_r ~ '%02X' % interpolated_g ~ '%02X' % interpolated_b -%}
+                    {{ interpolated_hex }}
+                  {#- Only below key available -#}
+                  {%- elif below is defined -%}
+                    {%- set value = dictionary[below] -%}
+                    {{ value }}
+                  {#- Only above key available -#}
+                  {%- elif above is defined -%}
+                    {%- set value = dictionary[above] -%}
+                    {{ value }}
+                  {#- No matching keys available -#}
+                  {%- else -%}
+                    No matching key found.
+                  {%- endif -%}
+                  {%- endmacro -%}
+
+                  {#- Define macro to get length of the forecast -#}
+                  {%- macro str_len(stringo) %}
+                  {%- if '.' in stringo %}
+                  {%- set char_count = (stringo | length) -1 %}{{char_count * 3 + 1 + char_count}}
+                  {%- else %}
+                  {%- set char_count = (stringo | length) %}{{char_count * 3 + (char_count - 1)}}
+                  {%- endif %}
+                  {%- endmacro %}
+
+                  {#- Define a macro to draw out the forecast lines#}
+                    {%- macro draw_forecast_lines(x,hours,height) %}
+                      {%- for hour in range(hours) %}
+                        {%- if height == 0 %}
+                          ["pixel",{{x+hour}},7,"{{interpolate(color_dict, forecast[hour]['temperature']) }}"]
+                        {%- else %}
+                          ["line",{{x+hour}},7,{{x+hour}},{{7 - height}},"{{interpolate(color_dict, forecast[hour]['temperature']) }}"]
+                        {%- endif %}
+                        {%- if hour+1 != hours %},{%endif%}
+                      {%- endfor %}
+                    {%- endmacro %}
+
+                    {
+                      "draw": [
+                        {%- if forecast_hours > 0 %}
+                        {{draw_forecast_lines(8,forecast_hours,0)}}
+                      {%- endif %}
+                      {%- if display_temp is number -%}
+                      {% if forecast_hours > 0 %},{% endif %}["text",{{text_x}},1,"{{temp_text}}","{{interpolate(color_dict, display_temp | float)}}"]
+                      {%- else -%}
+                      {% if forecast_hours > 0 %},{% endif %}["text",8,1,"err","#ff0000"]
+                      {%- endif -%}
+
+                      {% if show_moon %}
+                      ,{{moon_data}}
+                      {% endif %}
+                      ],
+                      "icon": "{{icon}}",
+                      "durationMs": {{message_duration | int(0) * 1000}},
+                      "iconMode": "push",
+                      "lifetimeMs": 2000000,
+                      "lifetimeExpiry":"mark"
+                      {% if show_overlay and overlay %}
+                      ,"overlay": "{{overlay}}"
+                      {% endif %}
+                      }
+
